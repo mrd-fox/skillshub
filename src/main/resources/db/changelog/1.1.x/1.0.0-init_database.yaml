@@ -1,0 +1,209 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create_e_learning_tables
+      author: Marina DARDE
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: password
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: courses
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: author_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_course_author
+                    references: users(id)
+        - createTable:
+            tableName: sections
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_section_course
+                    references: courses(id)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: chapters
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: section_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_chapter_section
+                    references: sections(id)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: video_url
+                  type: TEXT
+        - createTable:
+            tableName: purchases
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_purchase_user
+                    references: users(id)
+              - column:
+                  name: course_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_purchase_course
+                    references: courses(id)
+              - column:
+                  name: purchase_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: reviews
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_review_course
+                    references: courses(id)
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_review_user
+                    references: users(id)
+              - column:
+                  name: rating
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: comment
+                  type: TEXT
+              - column:
+                  name: tutor_response
+                  type: TEXT
+        - createTable:
+            tableName: progress
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_progress_user
+                    references: users(id)
+              - column:
+                  name: course_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_progress_course
+                    references: courses(id)
+              - column:
+                  name: last_chapter_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_progress_chapter
+                    references: chapters(id)
+              - column:
+                  name: last_accessed
+                  type: TIMESTAMP
+      rollback:
+        - dropTable:
+            tableName: progress
+        - dropTable:
+            tableName: reviews
+        - dropTable:
+            tableName: purchases
+        - dropTable:
+            tableName: chapters
+        - dropTable:
+            tableName: sections
+        - dropTable:
+            tableName: courses
+        - dropTable:
+            tableName: users
+
