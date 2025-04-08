@@ -1,0 +1,36 @@
+volumes:
+  mariabd-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+services:
+  maria-db:
+    restart: unless-stopped
+    image: library/mariadb:10.6.17
+    environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_EXTRA_FLAGS=--max-connect-errors=1000 --max-connections=1000 --log_error --log_warnings=4 --slow-query-log --log-queries-not-using-indexes --min-examined-row-limit=100
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariabd-data:/var/lib/mysql
+    container_name: mariadb
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "--silent" ]
+      interval: 3s
+      retries: 10
+#  rabbitmq:
+#    restart: unless-stopped
+#    build: rabbitmq
+#    image: rabbitmq_with_delayed_message_exchange
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    volumes:
+#      - rabbitmq-data:/var/lib/rabbitmq
+#    container_name: rabbitmq
+
+
+
+

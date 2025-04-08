@@ -1,0 +1,52 @@
+#variables:
+#  MAVEN_CLI_OPTS: "-B -ntp"
+#  JAVA_HOME: "/usr/lib/jvm/java-21-openjdk"  # Définit explicitement JAVA_HOME
+#  PATH: "$JAVA_HOME/bin:$PATH"
+#  DB_HOST: mariadb
+#  DB_PORT: 3306
+#  DB_NAME: skills-hub
+#  DB_USER: root
+#
+#stages:
+#  - test
+#  - build
+##  - deploy
+#
+##before_script:
+##  - docker --version
+##  - apt-get update && apt-get install -y make
+##  - apt-get install -y docker-compose  # Assurez-vous que docker-compose est installé
+##  - docker-compose -v   # Vérifie la version de docker-compose
+##  - docker-compose up -d maria-db
+##  - sleep 15  # Attends que le service MariaDB soit prêt
+##  - make migration_up  # Lance la migration
+#
+#test:
+#  stage: test
+#  image: maven:3.9.6-eclipse-temurin-21
+#  services:
+#    - name: library/mariadb:10.6.17
+#      alias: mariadb
+#  script:
+#    - echo "start"
+##    - mvn $MAVEN_CLI_OPTS test
+#
+#build:
+#  stage: build
+#  image: maven:3.9.6-eclipse-temurin-21
+#  script:
+#    - mvn $MAVEN_CLI_OPTS clean package
+#  artifacts:
+#    paths:
+#      - target/*.jar
+#    expire_in: 1h
+#
+##build:
+##  stage: build
+##  image: maven:3.9.6-eclipse-temurin-21
+##  script:
+##    - mvn $MAVEN_CLI_OPTS clean package
+##  artifacts:
+##    paths:
+##      - target/*.jar
+##    expire_in: 1h

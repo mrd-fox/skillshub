@@ -8,10 +8,10 @@
         <version>3.4.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.simplon-project.skillhub</groupId>
-    <artifactId>skillhub</artifactId>
+    <groupId>com.simplon-project.skills-hub</groupId>
+    <artifactId>skills-hub</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>skillhub</name>
+    <name>skills-hub</name>
 
     <description>A platform for online learning where students can purchase and follow courses created by tutors
     </description>
