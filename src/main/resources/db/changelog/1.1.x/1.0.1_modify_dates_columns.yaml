@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH124-backfill-courses-audit-columns
+      author: marina darde
+      changes:
+        - addDefaultValue:
+            tableName: courses
+            columnName: created_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: courses
+            columnName: updated_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - update:
+            tableName: courses
+            columns:
+              - column:
+                  name: created_at
+                  valueDate: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  valueDate: CURRENT_TIMESTAMP
+            where: created_at IS NULL OR updated_at IS NULL
+      rollback:
+        - sql:
+            splitStatements: false
+            stripComments: true
+            dbms: postgres
+            sql: |
+              UPDATE courses
+              SET created_at = NULL,
+                  updated_at = NULL
+              WHERE created_at IS NOT NULL OR updated_at IS NOT NULL;
+        - dropDefaultValue:
+            tableName: courses
+            columnName: created_at
+        - dropDefaultValue:
+            tableName: courses
+            columnName: updated_at
