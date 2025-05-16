@@ -1,0 +1,32 @@
+server:
+  port: 10020
+
+springdoc:
+  swagger-ui:
+    tagsSorter: alpha
+    doc-expansion: none
+
+spring:
+  application:
+    name: @project.artifactId@
+
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5433/skills_hub
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: none
+
+  liquibase:
+    enabled: false

@@ -24,6 +24,7 @@
         <json-merge-patch-helper.version>2.0.0</json-merge-patch-helper.version>
         <snakyaml.version>2.3</snakyaml.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <archunit-junt5.version>1.4.0</archunit-junt5.version>
     </properties>
     <dependencies>
         <!--==================================================================
@@ -111,28 +112,28 @@
             <artifactId>liquibase-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <version>3.4.0</version>
-            <scope>runtime</scope>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.3</version>
         </dependency>
         <!--==================================================================
          = FEIGN
          ================================================================== -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.springframework.cloud</groupId>-->
-        <!--            <artifactId>spring-cloud-starter-openfeign</artifactId>-->
-        <!--        </dependency>-->
-        <!--        <dependency>-->
-        <!--            <groupId>io.github.openfeign</groupId>-->
-        <!--            <artifactId>feign-httpclient</artifactId>-->
-        <!--        </dependency>-->
-        <!--        <dependency>-->
-        <!--            <groupId>io.github.openfeign</groupId>-->
-        <!--            <artifactId>feign-jackson</artifactId>-->
-
-        <!--        </dependency>-->
-
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-httpclient</artifactId>
+            <version>13.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-jackson</artifactId>
+            <version>13.5</version>
+        </dependency>
         <!--==================================================================
          = ZALANDO PROBLEM
          ================================================================== -->
@@ -164,6 +165,17 @@
             <artifactId>lombok-mapstruct-binding</artifactId>
             <version>0.2.0</version>
         </dependency>
+        <!--==================================================================
+         = ARCUNIT
+         ================================================================== -->
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit-junt5.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ENV -->
         <!--        <dependency>-->
         <!--            <groupId>io.github.cdimascio</groupId>-->
@@ -195,6 +207,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

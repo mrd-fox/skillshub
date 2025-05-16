@@ -1,23 +1,27 @@
 volumes:
-  mariabd-data:
+  postgres-data:
     driver: local
   rabbitmq-data:
     driver: local
 services:
-  maria-db:
+  postgres-db:
     restart: unless-stopped
-    image: library/mariadb:10.6.17
+    image: postgres:15
     environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      - MARIADB_EXTRA_FLAGS=--max-connect-errors=1000 --max-connections=1000 --log_error --log_warnings=4 --slow-query-log --log-queries-not-using-indexes --min-examined-row-limit=100
+      POSTGRES_DB: skills_hub
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      #      - MYSQL_ROOT_PASSWORD=
+      #      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      #      - MARIADB_EXTRA_FLAGS=--max-connect-errors=1000 --max-connections=1000 --log_error --log_warnings=4 --slow-query-log --log-queries-not-using-indexes --min-examined-row-limit=100
     ports:
-      - "3306:3306"
+      - "5433:5432"
     volumes:
-      - mariabd-data:/var/lib/mysql
-    container_name: mariadb
+      - postgres-data:/var/lib/postgresql/data
+    #      - mariabd-data:/var/lib/mysql
+    container_name: postgres
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "--silent" ]
+      test: [ "CMD", "pg_isready", "-U", "root" ]
       interval: 3s
       retries: 10
 #  rabbitmq:

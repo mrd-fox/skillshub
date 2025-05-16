@@ -42,8 +42,9 @@ diagram_generate:
 # #######################################################################################
 
 LIQUIBASE_VARIABLES = 	-Dliquibase.changeLogFile=db/changelog/db.changelog-master.yaml \
-						-Dliquibase.url=jdbc:mariadb://127.0.0.1:3306/skills-hub \
+						-Dliquibase.url=jdbc:postgresql://127.0.0.1:5433/skills_hub \
 						-Dliquibase.username=root \
+						-Dliquibase.password=root \
 						-Dliquibase.contexts=$(CONTEXT)
 
 migration_up: compile
