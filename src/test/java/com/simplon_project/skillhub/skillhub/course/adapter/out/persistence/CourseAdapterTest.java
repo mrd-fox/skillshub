@@ -3,7 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.persistence;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.CourseAdapter;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CreateCourseEntityMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 public class CourseAdapterTest {
 
     @Mock
-    CreateCourseEntityMapper createCourseEntityMapper;
+    CourseEntityMapper courseEntityMapper;
 
     @Mock
     CourseRepository courseRepository;

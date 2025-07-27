@@ -22,4 +22,6 @@ public class Course extends Base {
     Long price;
     CourseStatusEnum status;
     List<Section> sections;
+
+
 }

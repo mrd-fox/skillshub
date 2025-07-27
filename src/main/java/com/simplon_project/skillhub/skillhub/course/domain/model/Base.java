@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class Base {
-    String id;
+    Id id;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

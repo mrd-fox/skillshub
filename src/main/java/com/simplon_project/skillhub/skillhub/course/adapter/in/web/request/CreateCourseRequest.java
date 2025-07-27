@@ -1,12 +1,11 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.request;
 
 
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateCourseCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
-import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
 
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
@@ -18,15 +17,19 @@ public record CreateCourseRequest(
         String title,
         @Schema(example = "Course description", description = "The description of course")
         String description,
-//        List<String> keyWords,
         @Schema(example = "Course price", description = "The price of course")
         Long price,
-        @Nullable
+        @Schema(example = "Sections of cours", description = "The course's sections")
         List<CreateSectionRequest> sections
 ) {
-    public CreateCourseRequest {
-        if (sections == null) {
-            sections = Collections.emptyList();
-        }
+
+    public CreateCourseCommand toCourseCommand() {
+        return new CreateCourseCommand(
+                title,
+                description,
+                price,
+                CreateSectionRequest.toSectionCommands(sections, null, null)
+        );
     }
+
 }

@@ -1,0 +1,48 @@
+package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper;
+
+import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
+import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
+
+import java.util.UUID;
+
+public class VideoInfoEntityMapper {
+    public static VideoInfo mapToDomain(VideoEntity entity, CycleAvoidingMappingContext context) {
+        if (entity == null) return null;
+        var existing = context.getMappedInstance(entity, VideoInfo.class);
+        if (existing != null) return existing;
+
+        var domain = new VideoInfo(
+                Id.of(entity.getId().toString()),
+                entity.getStorageKey(),
+                entity.getDuration(),
+                entity.getFormat(),
+                entity.getSize(),
+                entity.getWidth(),
+                entity.getHeight(),
+                entity.getStatus()
+        );
+        context.storeMappedInstance(entity, domain);
+        return domain;
+    }
+
+    public static VideoEntity mapToEntity(VideoInfo domain, CycleAvoidingMappingContext context) {
+        if (domain == null) return null;
+        var existing = context.getMappedInstance(domain, VideoEntity.class);
+        if (existing != null) return existing;
+
+        var entity = VideoEntity.builder()
+                .id(UUID.fromString(domain.id().toString()))
+                .storageKey(domain.key())
+                .duration(domain.duration())
+                .format(domain.format())
+                .size(domain.size())
+                .width(domain.width())
+                .height(domain.height())
+                .status(domain.status())
+                .build();
+        context.storeMappedInstance(domain, entity);
+        return entity;
+    }
+}

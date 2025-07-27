@@ -2,9 +2,11 @@ package com.simplon_project.skillhub.skillhub.course.application.port.out;
 
 
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
 public interface FindCoursePort {
 
+    Course find(Id id);
 
-    Course findCourse(String title);
+    Course findByTitle(Course course);
 }

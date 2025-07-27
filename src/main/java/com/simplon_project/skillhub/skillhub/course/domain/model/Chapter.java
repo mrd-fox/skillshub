@@ -14,5 +14,5 @@ import lombok.experimental.SuperBuilder;
 public class Chapter extends Base {
     Section section;
     String title;
-    String videoUrl; //encoded?
+    VideoInfo video;
 }

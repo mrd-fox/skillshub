@@ -22,7 +22,7 @@ public class ChapterEntity extends BaseEntity {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "url")
-    private String videoUrl;
-
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "video_id")
+    private VideoEntity video;
 }
