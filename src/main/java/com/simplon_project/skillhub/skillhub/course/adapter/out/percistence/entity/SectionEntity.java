@@ -17,13 +17,15 @@ import java.util.List;
 @ToString
 public class SectionEntity extends BaseEntity {
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private CourseEntity course;
 
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
     @Builder.Default
     private List<ChapterEntity> chapters = new ArrayList<>();
 }

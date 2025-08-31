@@ -12,7 +12,7 @@ public final class ChapterResponseMapper {
                 .title(chapter.getTitle())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())
-                .videoUrl(chapter.getVideoUrl())
+                .video(VideoResponseMapper.mapToVideoResponse(chapter.getVideo()))
                 .build();
     }
 

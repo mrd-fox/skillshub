@@ -6,6 +6,6 @@ import org.zalando.problem.Status;
 
 public class CourseNotFoundException extends AbstractThrowableProblem {
     public CourseNotFoundException(Id courseId) {
-        super(null, "course-not-found", Status.BAD_REQUEST, "course with id %s not found", courseId);
+        super(null, "course-not-found", Status.BAD_REQUEST, String.format("course with id %s not found", courseId.asString()));
     }
 }

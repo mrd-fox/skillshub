@@ -6,8 +6,6 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Section;
 
 public class SectionAdapter implements FindSectionPort {
 
-    SectionRepository
-
     @Override
     public Section find(Id id) {
         return null;

@@ -4,7 +4,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.persistence;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.CourseAdapter;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseRepository;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ public class CourseAdapterTest {
     CourseEntityMapper courseEntityMapper;
 
     @Mock
-    CourseRepository courseRepository;
+    CourseJpaRepository courseJpaRepository;
 
     @InjectMocks
     private CourseAdapter courseAdapter;
@@ -40,7 +40,7 @@ public class CourseAdapterTest {
 
         var existingEntity = CourseEntity.builder().title(COURSE_TITLE).build();
 
-        when(courseRepository.findByTitle(COURSE_TITLE.toLowerCase()))
+        when(courseJpaRepository.findByTitle(COURSE_TITLE.toLowerCase()))
                 .thenReturn(Optional.of(existingEntity));
 
         // WHEN + THEN
@@ -49,7 +49,7 @@ public class CourseAdapterTest {
         });
 
         assertEquals("course-already-exists: Course entity with title Course Title already exists", exception.getMessage());
-        verify(courseRepository).findByTitle(COURSE_TITLE.toLowerCase());
+        verify(courseJpaRepository).findByTitle(COURSE_TITLE.toLowerCase());
     }
 
     @Test
@@ -57,11 +57,11 @@ public class CourseAdapterTest {
         // GIVEN
         var course = Course.builder().title(COURSE_TITLE).build();
 
-        when(courseRepository.findByTitle(COURSE_TITLE.toLowerCase()))
+        when(courseJpaRepository.findByTitle(COURSE_TITLE.toLowerCase()))
                 .thenReturn(Optional.empty());
 
         // WHEN + THEN
         assertDoesNotThrow(() -> courseAdapter.assertCourseNotExists(course));
-        verify(courseRepository).findByTitle(COURSE_TITLE.toLowerCase());
+        verify(courseJpaRepository).findByTitle(COURSE_TITLE.toLowerCase());
     }
 }

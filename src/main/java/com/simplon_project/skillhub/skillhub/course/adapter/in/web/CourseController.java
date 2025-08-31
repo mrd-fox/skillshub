@@ -4,6 +4,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.Course
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateCourseRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.CourseResponse;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateChapterPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateCoursePort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,10 +18,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/course")
 public class CourseController {
-    //    private final CreateCourseRequestMapper createCourseRequestMapper;
     private final CreateCoursePort createCoursePort;
-//    private final CreateCourseResponseMapper createCourseResponseMapper;
-//    private final CreateChapterPort createChapterPort;
+    private final CreateChapterPort createChapterPort;
 
     @PostMapping
     @Operation(description = "Create a draft of course")
@@ -34,14 +33,13 @@ public class CourseController {
     @PostMapping("courses/{courseId}/sections/{sectionId}/chapters")
     @Operation(description = "Create a draft of chapter")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createChapter(
+    public CourseResponse createChapter(
             @Parameter(description = "course id", required = true) @PathVariable String courseId,
             @Parameter(description = "section id", required = true) @PathVariable String sectionId,
             @RequestBody @Valid @NotNull CreateChapterRequest request
     ) {
-        var chapterCommand = request.toChapterCommand(courseId, sectionId);
+        var command = request.toChapterCommand(courseId, sectionId);
         //todo
-        //chapterCommand.mapToResponse;
-        createChapterPort.createChapter(chapterCommand);
+        return CourseResponseMapper.mapToCourseResponse(createChapterPort.createChapter(command));
     }
 }

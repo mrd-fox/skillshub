@@ -4,5 +4,6 @@ public enum VideoStatusEnum {
     UPLOADED,
     PROCESSING,
     READY,
-    FAILED
+    FAILED,
+    PENDING,
 }

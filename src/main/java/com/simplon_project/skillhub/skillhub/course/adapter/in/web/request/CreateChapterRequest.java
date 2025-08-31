@@ -13,12 +13,13 @@ import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 public record CreateChapterRequest(
         @Schema(example = "Title of chapter", description = "The title of chapter", requiredMode = REQUIRED)
         @NotBlank
-        String title
+        String title,
+        Integer position
 ) {
 
     public CreateChapterCommand toChapterCommand(String courseId, String sectionId) {
 
-        return new CreateChapterCommand(title, courseId, sectionId);
+        return new CreateChapterCommand(title, courseId, sectionId, position);
     }
 
     public static List<CreateChapterCommand> toChapterCommands(List<CreateChapterRequest> requests, String courseId, String sectionId) {

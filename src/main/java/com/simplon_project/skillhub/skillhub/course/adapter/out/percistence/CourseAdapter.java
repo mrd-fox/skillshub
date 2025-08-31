@@ -3,7 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseRepository;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class CourseAdapter implements SaveCoursePort, FindCoursePort {
-    private final CourseRepository courseRepository;
+    private final CourseJpaRepository courseJpaRepository;
 
 
     @PersistenceContext
@@ -36,7 +36,7 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
     @Transactional
     public Course saveCourse(Course course) {
         var courseEntity = CourseEntityMapper.mapToEntity(course, new CycleAvoidingMappingContext());
-        var saved = courseRepository.saveAndFlush(courseEntity);
+        var saved = courseJpaRepository.saveAndFlush(courseEntity);
         entityManager.refresh(saved);
         return CourseEntityMapper.mapToDomain(saved, new CycleAvoidingMappingContext());
     }
@@ -44,7 +44,7 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
 
     @Override
     public Course find(Id id) {
-        var courseEntity = courseRepository.findById(id.asString())
+        var courseEntity = courseJpaRepository.findById(id.asString())
                 .orElseThrow(() -> new CourseNotFoundException(id));
 
         return CourseEntityMapper.mapToDomain(courseEntity, new CycleAvoidingMappingContext());
@@ -56,7 +56,7 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
     public Course findByTitle(Course course) {
         String normalizedTitle = course.getTitle().replaceAll("\\s+", "").toLowerCase();
 
-        var existingCourse = courseRepository.findAll().stream()
+        var existingCourse = courseJpaRepository.findAll().stream()
                 .filter(c -> c.getTitle().replaceAll("\\s+", "").toLowerCase().equals(normalizedTitle))
                 .findFirst().orElse(null);
 

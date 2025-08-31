@@ -18,6 +18,7 @@ public class ChapterEntityMapper {
         var domain = Chapter.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())
+                .position(entity.getPosition())
                 .build();
 
         context.storeMappedInstance(entity, domain);

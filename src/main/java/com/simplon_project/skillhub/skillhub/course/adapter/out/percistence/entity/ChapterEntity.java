@@ -15,12 +15,15 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 public class ChapterEntity extends BaseEntity {
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id", nullable = false)
     private SectionEntity section;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false)
     private String title;
+
+    @Column(name = "position", nullable = false)
+    private Integer position;
 
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "video_id")

@@ -10,7 +10,6 @@ import java.util.UUID;
 
 public class CourseEntityMapper {
 
-
     public static Course mapToDomain(CourseEntity entity, CycleAvoidingMappingContext context) {
         var existing = context.getMappedInstance(entity, Course.class);
         if (existing != null) return existing;

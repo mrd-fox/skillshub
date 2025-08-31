@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.domain.model;
 
+import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.SectionNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +23,13 @@ public class Course extends Base {
     Long price;
     CourseStatusEnum status;
     List<Section> sections;
+
+    public Section getSectionById(Id sectionId) {
+        return getSections().stream()
+                .filter(section -> section.getId().equals(sectionId))
+                .findFirst()
+                .orElseThrow(() -> new SectionNotFoundException(sectionId));
+    }
 
 
 }

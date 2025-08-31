@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-videos-table
+      author: Marina Darde
+      changes:
+        - createTable:
+            tableName: videos
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: storage_key
+                  type: VARCHAR(255)
+              - column:
+                  name: format
+                  type: VARCHAR(50)
+              - column:
+                  name: size
+                  type: BIGINT
+              - column:
+                  name: width
+                  type: INTEGER
+              - column:
+                  name: height
+                  type: INTEGER
+              - column:
+                  name: duration
+                  type: INTERVAL
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addColumn:
+            tableName: chapters
+            columns:
+              - column:
+                  name: video_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+
+        - addForeignKeyConstraint:
+            constraintName: fk_chapter_video
+            baseTableName: chapters
+            baseColumnNames: video_id
+            referencedTableName: videos
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: chapters
+            constraintName: fk_chapter_video
+        - dropColumn:
+            tableName: chapters
+            columnName: video_id
+        - dropTable:
+            tableName: videos

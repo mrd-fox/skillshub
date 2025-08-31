@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 public record ChapterResponse(
         String id,
         String title,
-        String videoUrl, //encoded?
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        VideoResponse video
 ) {
 }
