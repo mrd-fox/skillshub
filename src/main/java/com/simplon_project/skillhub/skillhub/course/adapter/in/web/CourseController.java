@@ -39,7 +39,6 @@ public class CourseController {
             @RequestBody @Valid @NotNull CreateChapterRequest request
     ) {
         var command = request.toChapterCommand(courseId, sectionId);
-        //todo
         return CourseResponseMapper.mapToCourseResponse(createChapterPort.createChapter(command));
     }
 }

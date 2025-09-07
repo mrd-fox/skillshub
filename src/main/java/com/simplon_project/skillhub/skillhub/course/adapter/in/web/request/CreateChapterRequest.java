@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.request;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateChapterCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +11,7 @@ import java.util.List;
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record CreateChapterRequest(
         @Schema(example = "Title of chapter", description = "The title of chapter", requiredMode = REQUIRED)
         @NotBlank

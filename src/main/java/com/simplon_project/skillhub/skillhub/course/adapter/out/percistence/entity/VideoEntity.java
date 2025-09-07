@@ -33,6 +33,8 @@ public class VideoEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private VideoStatusEnum status;
 
-    @OneToOne(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "chapter_id", nullable = false, unique = true,
+            foreignKey = @ForeignKey(name = "fk__video_chapter__id"))
     private ChapterEntity chapter;
 }

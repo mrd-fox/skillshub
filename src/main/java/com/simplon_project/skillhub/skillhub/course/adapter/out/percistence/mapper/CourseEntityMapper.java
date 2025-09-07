@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.map
 
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.SectionEntity;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
@@ -41,7 +42,13 @@ public class CourseEntityMapper {
 
         context.storeMappedInstance(domain, entity);
 
-        entity.setSections(SectionEntityMapper.mapToEntities(domain.getSections(), context));
+        var sectionEntities = SectionEntityMapper.mapToEntities(domain.getSections(), context);
+        for (SectionEntity sectionEntity : sectionEntities) {
+            sectionEntity.setCourse(entity);
+        }
+
+        entity.setSections(sectionEntities);
+
         return entity;
     }
 

@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: SH124-backfill-courses-audit-columns
-      author: marina darde
+      id: SH-124-backfill-courses-audit-columns
+      author: Marina DARDE
       changes:
         - addDefaultValue:
             tableName: courses

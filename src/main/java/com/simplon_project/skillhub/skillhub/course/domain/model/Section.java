@@ -31,15 +31,13 @@ public class Section extends Base {
                 ? 0
                 : chapters.stream().mapToInt(Chapter::getPosition).max().orElse(0);
 
-        Integer desiredPos = chapter.getPosition();
+        var desiredPos = chapter.getPosition();
         int finalPos;
 
         if (desiredPos == null || desiredPos <= 0 || desiredPos > maxPos + 1) {
-            // pas de position fournie ou en dehors des bornes -> append
             finalPos = maxPos + 1;
         } else {
             finalPos = desiredPos;
-            // décaler les chapitres existants
             for (Chapter c : chapters) {
                 if (c.getPosition() >= finalPos) {
                     c.setPosition(c.getPosition() + 1);
@@ -51,7 +49,6 @@ public class Section extends Base {
         chapter.setPosition(finalPos);
 
         chapters.add(chapter);
-        // garder la liste triée pour cohérence
         chapters.sort(Comparator.comparingInt(Chapter::getPosition));
     }
 }

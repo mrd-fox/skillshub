@@ -3,9 +3,11 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.springframework.data.domain.Persistable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "sections")
@@ -15,7 +17,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class SectionEntity extends BaseEntity {
+public class SectionEntity extends BaseEntity implements Persistable<UUID> {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
@@ -28,4 +30,30 @@ public class SectionEntity extends BaseEntity {
     @OrderBy("position ASC")
     @Builder.Default
     private List<ChapterEntity> chapters = new ArrayList<>();
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    @Transient
+    public boolean isNew() {
+        return isNew;
+    }
+
+
+    public void markNew() {
+        this.isNew = true;
+    }
+
+    public void markNotNew() {
+        this.isNew = false;
+    }
+
+
+    @PostLoad
+    @PostPersist
+    void afterLoadOrPersist() {
+        this.isNew = false;
+    }
+
 }

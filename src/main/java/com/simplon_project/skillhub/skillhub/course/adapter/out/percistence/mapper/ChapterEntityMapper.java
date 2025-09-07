@@ -39,7 +39,7 @@ public class ChapterEntityMapper {
         if (existing != null) return existing;
 
         var entity = ChapterEntity.builder()
-                .id(UUID.fromString(domain.getId().toString()))
+                .id(UUID.fromString(domain.getId().asString()))
                 .title(domain.getTitle())
                 .build();
 

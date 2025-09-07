@@ -1,6 +1,5 @@
 package com.simplon_project.skillhub.skillhub.course.application.port.in.command;
 
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Section;
 
@@ -12,13 +11,8 @@ public record CreateSectionCommand(
         List<CreateChapterCommand> chapters
 ) {
     public Section mapToDomain() {
-        Course course = null;
-        if (courseId != null) {
-            course = Course.builder().id(Id.of(courseId)).build();
-        }
         return Section.builder()
                 .id(Id.random())
-                .course(course)
                 .title(title)
                 .chapters(CreateChapterCommand.mapToDomains(chapters))
                 .build();

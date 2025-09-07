@@ -60,6 +60,6 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
                 .filter(c -> c.getTitle().replaceAll("\\s+", "").toLowerCase().equals(normalizedTitle))
                 .findFirst().orElse(null);
 
-        return CourseEntityMapper.mapToDomain(existingCourse, new CycleAvoidingMappingContext());
+        return existingCourse != null ? CourseEntityMapper.mapToDomain(existingCourse, new CycleAvoidingMappingContext()) : null;
     }
 }

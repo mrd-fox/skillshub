@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/1.1.x/1.0.1_modify_dates_columns.yaml
   - include:
       file: db/changelog/1.1.x/1.0.1_add_video_table.yaml
+  - include:
+      file: db/changelog/1.1.x/1.0.1-setup-course_chapitre_modification.yaml
