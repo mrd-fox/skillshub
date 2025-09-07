@@ -43,8 +43,6 @@ public class SectionEntityMapper {
         var entity = SectionEntity.builder()
                 .id(UUID.fromString(domain.getId().asString()))
                 .title(domain.getTitle())
-                .createdAt(domain.getCreatedAt())
-                .updatedAt(domain.getUpdatedAt())
                 .build();
 
         context.storeMappedInstance(domain, entity);

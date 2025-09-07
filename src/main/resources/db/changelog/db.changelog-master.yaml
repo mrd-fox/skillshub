@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/1.1.x/1.0.1_add_video_table.yaml
   - include:
       file: db/changelog/1.1.x/1.0.1-setup-course_chapitre_modification.yaml
+  - include:
+      file: db/changelog/1.1.x/1.0.1._add_created_updated_at_section_chapter.yaml
