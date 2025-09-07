@@ -41,6 +41,7 @@ public class ChapterEntityMapper {
         var entity = ChapterEntity.builder()
                 .id(UUID.fromString(domain.getId().asString()))
                 .title(domain.getTitle())
+                .position(domain.getPosition())
                 .build();
 
         context.storeMappedInstance(domain, entity);

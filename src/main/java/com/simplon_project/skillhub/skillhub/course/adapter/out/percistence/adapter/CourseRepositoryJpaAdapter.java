@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -19,7 +20,8 @@ public class CourseRepositoryJpaAdapter implements CourseRepository {
 
     @Override
     public Optional<Course> findById(String id) {
-        return jpa.findById(id)
+        UUID uuid = UUID.fromString(id);
+        return jpa.findById(uuid)
                 .map(entity -> CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
     }
 

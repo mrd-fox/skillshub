@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.application.port.in.command;
 
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
 import java.util.List;
 
@@ -11,7 +12,19 @@ public record CreateChapterCommand(
         Integer position
 ) {
     public Chapter mapToDomain() {
-        return Chapter.builder().title(chapterTitle).position(position).build();
+        return Chapter.builder()
+                .id(Id.random())
+                .title(chapterTitle)
+                .position(position)
+                .build();
+    }
+
+    public Chapter mapToDomain(Id id) {
+        return Chapter.builder()
+                .id(id)
+                .title(chapterTitle)
+                .position(position)
+                .build();
     }
 
     public static List<Chapter> mapToDomains(List<CreateChapterCommand> commands) {

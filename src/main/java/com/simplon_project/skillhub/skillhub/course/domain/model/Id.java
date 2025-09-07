@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.UUID;
+
 import static com.simplon_project.skillhub.skillhub.course.domain.common.Utils.generateUUID;
 
 @EqualsAndHashCode
@@ -32,5 +34,9 @@ public class Id {
 
     public String asString() {
         return id;
+    }
+
+    public UUID asUUID() {
+        return UUID.fromString(id);
     }
 }

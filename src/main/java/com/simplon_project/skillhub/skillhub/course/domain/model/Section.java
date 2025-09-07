@@ -1,9 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.domain.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -13,16 +10,23 @@ import java.util.Objects;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @Getter
 @Setter
 public class Section extends Base {
-    Course course;
-    String title;
-    List<Chapter> chapters;
+    private Course course;
+    private String title;
+    @Builder.Default
+    private List<Chapter> chapters = new ArrayList<>();
+
+    public void setChapters(List<Chapter> chapters) {
+        this.chapters = (chapters == null) ? new ArrayList<>() : new ArrayList<>(chapters);
+    }
+
 
     public void addChapter(Chapter chapter) {
         Objects.requireNonNull(chapter, "chapter is required");
+
         if (chapters == null) {
             chapters = new ArrayList<>();
         }
@@ -47,7 +51,6 @@ public class Section extends Base {
 
         chapter.setSection(this);
         chapter.setPosition(finalPos);
-
         chapters.add(chapter);
         chapters.sort(Comparator.comparingInt(Chapter::getPosition));
     }

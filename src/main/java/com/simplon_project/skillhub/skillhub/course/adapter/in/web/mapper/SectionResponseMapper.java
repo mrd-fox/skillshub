@@ -15,7 +15,7 @@ public final class SectionResponseMapper {
                 .title(section.getTitle())
                 .createdAt(section.getCreatedAt())
                 .updatedAt(section.getUpdatedAt())
-                .chapters(ChapterResponseMapper.mapToChapterResponses(section.getChapters()))
+                .chapters(section.getChapters() != null ? ChapterResponseMapper.mapToChapterResponses(section.getChapters()) : List.of())
                 .build();
     }
 

@@ -5,6 +5,8 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CourseResponseMapper {
     public static CourseResponse mapToCourseResponse(Course course) {
@@ -13,7 +15,7 @@ public final class CourseResponseMapper {
                 .title(course.getTitle())
                 .description(course.getDescription())
                 .status(course.getStatus())
-                .sections(SectionResponseMapper.mapToSectionResponses(course.getSections()))
+                .sections(course.getSections() != null ? SectionResponseMapper.mapToSectionResponses(course.getSections()) : List.of())
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();

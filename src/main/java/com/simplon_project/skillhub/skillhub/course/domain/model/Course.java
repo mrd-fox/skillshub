@@ -14,15 +14,15 @@ import java.util.List;
 @Getter
 @Setter
 public class Course extends Base {
-    String title;
-    String description;
+    private String title;
+    private String description;
     //    List<String> keyWords;
     // User  author;
-    Long price;
+    private Long price;
     @Builder.Default
-    CourseStatusEnum status = CourseStatusEnum.DRAFT;
+    private CourseStatusEnum status = CourseStatusEnum.DRAFT;
     @Builder.Default
-    List<Section> sections = new ArrayList<>();
+    private List<Section> sections = new ArrayList<>();
 
 
     public Section getSectionById(Id sectionId) {
