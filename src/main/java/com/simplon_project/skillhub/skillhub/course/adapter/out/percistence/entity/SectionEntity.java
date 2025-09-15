@@ -3,12 +3,20 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.springframework.data.domain.Persistable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
+@NamedEntityGraph(
+        name = "Section.withChaptersVideo",
+        attributeNodes = @NamedAttributeNode(value = "chapters", subgraph = "chaptersGraph"),
+        subgraphs = {
+                @NamedSubgraph(
+                        name = "chaptersGraph",
+                        attributeNodes = @NamedAttributeNode("video")
+                )
+        }
+)
 @Entity
 @Table(name = "sections")
 @AllArgsConstructor
@@ -17,7 +25,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString
-public class SectionEntity extends BaseEntity implements Persistable<UUID> {
+public class SectionEntity extends AbstractBaseEntity {
+
+    @EmbeddedId
+    private EntityId sectionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
@@ -31,29 +42,9 @@ public class SectionEntity extends BaseEntity implements Persistable<UUID> {
     @Builder.Default
     private List<ChapterEntity> chapters = new ArrayList<>();
 
-    @Transient
-    private boolean isNew = true;
 
     @Override
-    @Transient
-    public boolean isNew() {
-        return isNew;
+    public EntityId getId() {
+        return sectionId;
     }
-
-
-    public void markNew() {
-        this.isNew = true;
-    }
-
-    public void markNotNew() {
-        this.isNew = false;
-    }
-
-
-    @PostLoad
-    @PostPersist
-    void afterLoadOrPersist() {
-        this.isNew = false;
-    }
-
 }

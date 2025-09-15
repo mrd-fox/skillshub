@@ -2,10 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.Duration;
@@ -17,7 +14,11 @@ import java.time.Duration;
 @SuperBuilder
 @Getter
 @Setter
-public class VideoEntity extends BaseEntity {
+@Builder
+public class VideoEntity extends AbstractBaseEntity {
+    @EmbeddedId
+    private EntityId videoId;
+
     private String storageKey;
 
     private String format;
@@ -37,4 +38,9 @@ public class VideoEntity extends BaseEntity {
     @JoinColumn(name = "chapter_id", nullable = false, unique = true,
             foreignKey = @ForeignKey(name = "fk__video_chapter__id"))
     private ChapterEntity chapter;
+
+    @Override
+    public EntityId getId() {
+        return videoId;
+    }
 }

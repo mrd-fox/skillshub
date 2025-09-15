@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
@@ -33,7 +34,7 @@ public class VideoInfoEntityMapper {
         if (existing != null) return existing;
 
         var entity = VideoEntity.builder()
-                .id(UUID.fromString(domain.id().toString()))
+                .videoId(EntityId.of(UUID.fromString(domain.id().toString())))
                 .storageKey(domain.key())
                 .duration(domain.duration())
                 .format(domain.format())

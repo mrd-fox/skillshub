@@ -8,7 +8,7 @@ import java.util.List;
 public final class ChapterResponseMapper {
     public static ChapterResponse mapToChapterResponse(Chapter chapter) {
         return ChapterResponse.builder()
-                .id(chapter.getId().toString())
+                .id(chapter.getId().asString())
                 .title(chapter.getTitle())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())

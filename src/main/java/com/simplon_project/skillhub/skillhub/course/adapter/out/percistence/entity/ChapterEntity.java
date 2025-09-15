@@ -1,23 +1,21 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.springframework.data.domain.Persistable;
 
-import java.util.UUID;
-
-@Entity
-@Table(name = "\"chapters\"")
+@SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor
-@SuperBuilder
 @Getter
 @Setter
-public class ChapterEntity extends BaseEntity implements Persistable<UUID> {
+@Entity
+@Builder
+@Table(name = "\"chapters\"")
+public class ChapterEntity extends AbstractBaseEntity {
+    @EmbeddedId
+    private EntityId chapterId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id", nullable = false)
     private SectionEntity section;
@@ -29,7 +27,8 @@ public class ChapterEntity extends BaseEntity implements Persistable<UUID> {
     private Integer position;
 
     @OneToOne(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
-    private VideoEntity video;
+    @Builder.Default
+    private VideoEntity video = null;
 
     public void setVideo(VideoEntity videoEntity) {
         if (this.video != null) this.video.setChapter(null);
@@ -37,30 +36,9 @@ public class ChapterEntity extends BaseEntity implements Persistable<UUID> {
         if (videoEntity != null) videoEntity.setChapter(this);
     }
 
-    @Transient
-    private boolean isNew = true;
-
     @Override
-    @Transient
-    public boolean isNew() {
-        return isNew;
+    public EntityId getId() {
+        return chapterId;
     }
-
-
-    public void markNew() {
-        this.isNew = true;
-    }
-
-    public void markNotNew() {
-        this.isNew = false;
-    }
-
-
-    @PostLoad
-    @PostPersist
-    void afterLoadOrPersist() {
-        this.isNew = false;
-    }
-
 
 }

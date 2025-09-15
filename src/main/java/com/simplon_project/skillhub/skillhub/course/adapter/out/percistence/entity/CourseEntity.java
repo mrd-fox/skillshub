@@ -4,29 +4,42 @@ import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnu
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.springframework.data.domain.Persistable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "courses")
-@AllArgsConstructor
-@NoArgsConstructor
+@Inheritance(strategy = InheritanceType.JOINED)
 @SuperBuilder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Setter
-public class CourseEntity extends BaseEntity implements Persistable<UUID> {
+@EqualsAndHashCode(callSuper = true)
+@NamedEntityGraph(
+        name = "Course.withSectionsChaptersVideos",
+        attributeNodes = @NamedAttributeNode(value = "sections", subgraph = "sectionsGraph"),
+        subgraphs = {
+                @NamedSubgraph(
+                        name = "sectionsGraph",
+                        attributeNodes = @NamedAttributeNode(value = "chapters", subgraph = "chaptersGraph")
+                ),
+                @NamedSubgraph(
+                        name = "chaptersGraph",
+                        attributeNodes = @NamedAttributeNode("video")
+                )
+        }
+)
+public class CourseEntity extends AbstractBaseEntity {
+    @EmbeddedId
+    private EntityId courseId;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false, unique = true, length = 200)
     private String title;
 
-    @Column(name = "description")
+    @Column(name = "description", length = 1000)
     private String description;
-
-//    @Column(name = "key_words")
-//    private List<String> keyWords = new ArrayList<>();
 
     @Column(name = "price")
     private Long price;
@@ -39,29 +52,13 @@ public class CourseEntity extends BaseEntity implements Persistable<UUID> {
     @Builder.Default
     private List<SectionEntity> sections = new ArrayList<>();
 
-    @Transient
-    private boolean isNew = true;
+    public boolean isPublished() {
+        return this.status == CourseStatusEnum.PUBLISHED;
+    }
 
     @Override
-    @Transient
-    public boolean isNew() {
-        return isNew;
-    }
-
-
-    public void markNew() {
-        this.isNew = true;
-    }
-
-    public void markNotNew() {
-        this.isNew = false;
-    }
-
-
-    @PostLoad
-    @PostPersist
-    void afterLoadOrPersist() {
-        this.isNew = false;
+    public EntityId getId() {
+        return courseId;
     }
 
 }

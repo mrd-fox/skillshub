@@ -1,10 +1,13 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper;
 
+import com.simplon_project.skillhub.skillhub.config.helper.DateTimeHelper;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.ChapterEntity;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,14 +18,16 @@ public class ChapterEntityMapper {
         var existing = context.getMappedInstance(entity, Chapter.class);
         if (existing != null) return existing;
 
+        var zone = ZoneId.systemDefault();
         var domain = Chapter.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())
                 .position(entity.getPosition())
+                .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
+                .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
+                .video(entity.getVideo() != null ? VideoInfoEntityMapper.mapToDomain(entity.getVideo(), context) : null)
                 .build();
-
         context.storeMappedInstance(entity, domain);
-
         domain.setVideo(VideoInfoEntityMapper.mapToDomain(entity.getVideo(), context));
         return domain;
     }
@@ -39,7 +44,7 @@ public class ChapterEntityMapper {
         if (existing != null) return existing;
 
         var entity = ChapterEntity.builder()
-                .id(UUID.fromString(domain.getId().asString()))
+                .chapterId(EntityId.of(UUID.fromString(domain.getId().asString())))
                 .title(domain.getTitle())
                 .position(domain.getPosition())
                 .build();
