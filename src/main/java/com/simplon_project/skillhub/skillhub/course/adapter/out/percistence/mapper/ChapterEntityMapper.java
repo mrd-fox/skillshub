@@ -9,7 +9,9 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class ChapterEntityMapper {
     public static Chapter mapToDomain(ChapterEntity entity, CycleAvoidingMappingContext context) {
@@ -32,7 +34,7 @@ public class ChapterEntityMapper {
         return domain;
     }
 
-    public static List<Chapter> mapToDomains(List<ChapterEntity> entities, CycleAvoidingMappingContext context) {
+    public static List<Chapter> mapToDomains(Set<ChapterEntity> entities, CycleAvoidingMappingContext context) {
         return entities.stream()
                 .map(e -> mapToDomain(e, context))
                 .toList();
@@ -55,9 +57,9 @@ public class ChapterEntityMapper {
         return entity;
     }
 
-    public static List<ChapterEntity> mapToEntities(List<Chapter> domains, CycleAvoidingMappingContext context) {
+    public static Set<ChapterEntity> mapToEntities(Set<Chapter> domains, CycleAvoidingMappingContext context) {
         return domains.stream()
                 .map(d -> mapToEntity(d, context))
-                .toList();
+                .collect(Collectors.toSet());
     }
 }

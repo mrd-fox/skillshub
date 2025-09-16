@@ -1,19 +1,19 @@
-package com.simplon_project.skillhub.skillhub.storage.adapter;
+package com.simplon_project.skillhub.skillhub.storage.adapter.out.storage;
 
 import com.simplon_project.skillhub.skillhub.storage.adapter.configminio.MinioClientService;
-import com.simplon_project.skillhub.skillhub.storage.application.port.DeleteStoragePort;
-import com.simplon_project.skillhub.skillhub.storage.application.port.DownloadStoragePort;
-import com.simplon_project.skillhub.skillhub.storage.application.port.UploadStoragePort;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.DeleteMediaContentFromStoragePort;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.DownloadFromStoragePort;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.UploadStoragePort;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 
 @Component
-public class MinIOStorageAdapter implements UploadStoragePort, DownloadStoragePort, DeleteStoragePort {
+public class MinIOMediaContentAdapter implements UploadStoragePort, DownloadFromStoragePort, DeleteMediaContentFromStoragePort {
 
     private final MinioClientService minioClientService;
 
-    public MinIOStorageAdapter(MinioClientService minioClientService) {
+    public MinIOMediaContentAdapter(MinioClientService minioClientService) {
         this.minioClientService = minioClientService;
     }
 

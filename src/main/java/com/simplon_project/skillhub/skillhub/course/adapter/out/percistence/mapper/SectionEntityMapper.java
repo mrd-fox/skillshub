@@ -8,8 +8,10 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Section;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class SectionEntityMapper {
     public static Section mapToDomain(SectionEntity entity, CycleAvoidingMappingContext context) {
@@ -29,11 +31,11 @@ public class SectionEntityMapper {
         return domain;
     }
 
-    public static List<Section> mapToDomains(List<SectionEntity> entities, CycleAvoidingMappingContext context) {
+    public static Set<Section> mapToDomains(Set<SectionEntity> entities, CycleAvoidingMappingContext context) {
 
         return entities.stream()
                 .map(e -> mapToDomain(e, context))
-                .toList();
+                .collect(Collectors.toSet());
     }
 
     public static SectionEntity mapToEntity(Section domain, CycleAvoidingMappingContext context) {
@@ -48,7 +50,7 @@ public class SectionEntityMapper {
 
         context.storeMappedInstance(domain, entity);
 
-        var domainChapters = domain.getChapters() != null ? domain.getChapters() : List.<Chapter>of();
+        var domainChapters = domain.getChapters() != null ? domain.getChapters() : new HashSet<Chapter>();
         var chapterEntities = ChapterEntityMapper.mapToEntities(domainChapters, context);
 
         for (ChapterEntity chapterEntity : chapterEntities) {
@@ -58,9 +60,9 @@ public class SectionEntityMapper {
         return entity;
     }
 
-    public static List<SectionEntity> mapToEntities(List<Section> domains, CycleAvoidingMappingContext context) {
+    public static Set<SectionEntity> mapToEntities(Set<Section> domains, CycleAvoidingMappingContext context) {
         return domains.stream()
                 .map(d -> mapToEntity(d, context))
-                .toList();
+                .collect(Collectors.toSet());
     }
 }

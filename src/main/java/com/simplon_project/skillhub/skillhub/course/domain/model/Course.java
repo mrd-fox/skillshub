@@ -5,8 +5,8 @@ import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnu
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,7 +22,7 @@ public class Course extends Base {
     @Builder.Default
     private CourseStatusEnum status = CourseStatusEnum.DRAFT;
     @Builder.Default
-    private List<Section> sections = new ArrayList<>();
+    private Set<Section> sections = new HashSet<>();
 
 
     public Section getSectionById(Id sectionId) {

@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
@@ -44,7 +45,7 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
 
     @Override
     public Course find(Id id) {
-        var courseEntity = courseJpaRepository.findById(id.asString())
+        var courseEntity = courseJpaRepository.findById(EntityId.fromString(id.asString()))
                 .orElseThrow(() -> new CourseNotFoundException(id));
 
         return CourseEntityMapper.mapToDomain(courseEntity, new CycleAvoidingMappingContext());

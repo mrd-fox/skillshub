@@ -3,10 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.domain.model;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -17,10 +14,10 @@ public class Section extends Base {
     private Course course;
     private String title;
     @Builder.Default
-    private List<Chapter> chapters = new ArrayList<>();
+    private Set<Chapter> chapters = new HashSet<>();
 
     public void setChapters(List<Chapter> chapters) {
-        this.chapters = (chapters == null) ? new ArrayList<>() : new ArrayList<>(chapters);
+        this.chapters = (chapters == null) ? new HashSet<>() : new HashSet<>(chapters);
     }
 
 
@@ -28,7 +25,7 @@ public class Section extends Base {
         Objects.requireNonNull(chapter, "chapter is required");
 
         if (chapters == null) {
-            chapters = new ArrayList<>();
+            chapters = new HashSet<>();
         }
 
         int maxPos = chapters.isEmpty()
@@ -52,6 +49,12 @@ public class Section extends Base {
         chapter.setSection(this);
         chapter.setPosition(finalPos);
         chapters.add(chapter);
-        chapters.sort(Comparator.comparingInt(Chapter::getPosition));
+
+    }
+
+    public List<Chapter> getChaptersSorted() {
+        return chapters.stream()
+                .sorted(Comparator.comparingInt(Chapter::getPosition))
+                .toList();
     }
 }

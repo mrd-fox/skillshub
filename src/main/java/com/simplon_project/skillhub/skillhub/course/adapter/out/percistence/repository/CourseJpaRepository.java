@@ -8,10 +8,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface CourseJpaRepository extends JpaRepository<CourseEntity, String> {
+public interface CourseJpaRepository extends JpaRepository<CourseEntity, EntityId> {
     Optional<CourseEntity> findById(EntityId id);
 
     Optional<CourseEntity> findByTitle(String title);
@@ -24,5 +23,5 @@ public interface CourseJpaRepository extends JpaRepository<CourseEntity, String>
                 left join fetch ch.video v
                 where c.courseId = :id
             """)
-    Optional<CourseEntity> findByIdWithTree(@Param("id") UUID id);
+    Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
 }

@@ -5,8 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "courses")
@@ -50,7 +50,7 @@ public class CourseEntity extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<SectionEntity> sections = new ArrayList<>();
+    private Set<SectionEntity> sections = new HashSet<>();
 
     public boolean isPublished() {
         return this.status == CourseStatusEnum.PUBLISHED;

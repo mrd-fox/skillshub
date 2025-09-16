@@ -4,6 +4,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.Chap
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 
 import java.util.List;
+import java.util.Set;
 
 public final class ChapterResponseMapper {
     public static ChapterResponse mapToChapterResponse(Chapter chapter) {
@@ -16,7 +17,7 @@ public final class ChapterResponseMapper {
                 .build();
     }
 
-    public static List<ChapterResponse> mapToChapterResponses(List<Chapter> chapters) {
+    public static List<ChapterResponse> mapToChapterResponses(Set<Chapter> chapters) {
         return chapters.stream().map(ChapterResponseMapper::mapToChapterResponse).toList();
     }
 }

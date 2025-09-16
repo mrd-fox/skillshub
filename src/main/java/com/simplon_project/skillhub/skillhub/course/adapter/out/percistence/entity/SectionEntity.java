@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @NamedEntityGraph(
         name = "Section.withChaptersVideo",
@@ -40,7 +40,7 @@ public class SectionEntity extends AbstractBaseEntity {
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     @Builder.Default
-    private List<ChapterEntity> chapters = new ArrayList<>();
+    private Set<ChapterEntity> chapters = new HashSet<>();
 
 
     @Override

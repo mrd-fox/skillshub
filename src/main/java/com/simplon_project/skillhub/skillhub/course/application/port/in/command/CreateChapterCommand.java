@@ -3,7 +3,10 @@ package com.simplon_project.skillhub.skillhub.course.application.port.in.command
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public record CreateChapterCommand(
         String chapterTitle,
@@ -27,10 +30,10 @@ public record CreateChapterCommand(
                 .build();
     }
 
-    public static List<Chapter> mapToDomains(List<CreateChapterCommand> commands) {
-        if (commands == null) return List.of();
+    public static Set<Chapter> mapToDomains(List<CreateChapterCommand> commands) {
+        if (commands == null) return new HashSet<>();
         return commands.stream()
                 .map(CreateChapterCommand::mapToDomain)
-                .toList();
+                .collect(Collectors.toSet());
     }
 }

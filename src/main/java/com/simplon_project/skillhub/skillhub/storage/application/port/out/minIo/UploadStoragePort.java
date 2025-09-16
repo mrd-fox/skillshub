@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.storage.application.port;
+package com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo;
 
 import java.io.InputStream;
 

@@ -26,7 +26,7 @@ public class CourseRepositoryJpaAdapter implements CourseRepository {
 
     @Override
     public Optional<Course> findById(String id) {
-        var idModified = EntityId.of(UUID.fromString(id));
+        var idModified = EntityId.fromString(id);
         return courseJpaRepository.findById(idModified)
                 .map(entity -> CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
     }
@@ -39,7 +39,7 @@ public class CourseRepositoryJpaAdapter implements CourseRepository {
 
     @Override
     public Course save(Course courseDomain) {
-        UUID courseId = UUID.fromString(courseDomain.getId().asString());
+        var courseId = EntityId.fromString(courseDomain.getId().asString());
 
         // 1) Charger le graphe MANAGÉ
         CourseEntity managedCourseEntity = courseJpaRepository
@@ -133,8 +133,6 @@ public class CourseRepositoryJpaAdapter implements CourseRepository {
                 syncChaptersInPlace(existingSectionEntity, sectionDomain);
             }
         }
-
-
     }
 
     private void syncChaptersInPlace(SectionEntity sectionEntity, Section sectionDomain) {

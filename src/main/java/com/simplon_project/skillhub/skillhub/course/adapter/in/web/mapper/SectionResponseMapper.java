@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Set;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SectionResponseMapper {
@@ -19,7 +20,7 @@ public final class SectionResponseMapper {
                 .build();
     }
 
-    public static List<SectionResponse> mapToSectionResponses(List<Section> sections) {
+    public static List<SectionResponse> mapToSectionResponses(Set<Section> sections) {
         return sections.stream().map(SectionResponseMapper::mapToSectionResponse).toList();
     }
 }
