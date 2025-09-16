@@ -5,26 +5,41 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "courses")
-@AllArgsConstructor
-@NoArgsConstructor
+@Inheritance(strategy = InheritanceType.JOINED)
 @SuperBuilder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Setter
-public class CourseEntity extends BaseEntity {
+@EqualsAndHashCode(callSuper = true)
+@NamedEntityGraph(
+        name = "Course.withSectionsChaptersVideos",
+        attributeNodes = @NamedAttributeNode(value = "sections", subgraph = "sectionsGraph"),
+        subgraphs = {
+                @NamedSubgraph(
+                        name = "sectionsGraph",
+                        attributeNodes = @NamedAttributeNode(value = "chapters", subgraph = "chaptersGraph")
+                ),
+                @NamedSubgraph(
+                        name = "chaptersGraph",
+                        attributeNodes = @NamedAttributeNode("video")
+                )
+        }
+)
+public class CourseEntity extends AbstractBaseEntity {
+    @EmbeddedId
+    private EntityId courseId;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false, unique = true, length = 200)
     private String title;
 
-    @Column(name = "description")
+    @Column(name = "description", length = 1000)
     private String description;
-
-//    @Column(name = "key_words")
-//    private List<String> keyWords = new ArrayList<>();
 
     @Column(name = "price")
     private Long price;
@@ -33,8 +48,17 @@ public class CourseEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private CourseStatusEnum status;
 
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<SectionEntity> sections = new ArrayList<>();
+    private Set<SectionEntity> sections = new HashSet<>();
+
+    public boolean isPublished() {
+        return this.status == CourseStatusEnum.PUBLISHED;
+    }
+
+    @Override
+    public EntityId getId() {
+        return courseId;
+    }
 
 }

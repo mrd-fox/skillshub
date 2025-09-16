@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-129-create-videos-table
+      author: Marina DARDE
+      changes:
+        - createTable:
+            tableName: videos
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: storage_key
+                  type: VARCHAR(255)
+              - column:
+                  name: format
+                  type: VARCHAR(50)
+              - column:
+                  name: size
+                  type: BIGINT
+              - column:
+                  name: width
+                  type: INTEGER
+              - column:
+                  name: height
+                  type: INTEGER
+              - column:
+                  name: duration
+                  type: INTERVAL
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+              - column:
+                  name: chapter_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addForeignKeyConstraint:
+            constraintName: fk__video_chapter__id
+            baseTableName: videos
+            baseColumnNames: chapter_id
+            referencedTableName: chapters
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: videos
+            constraintName: fk__video_chapter__id
+        - dropTable:
+            tableName: videos

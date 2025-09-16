@@ -30,3 +30,8 @@ spring:
 
   liquibase:
     enabled: false
+
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin

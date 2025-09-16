@@ -1,22 +1,17 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.common.mapper;
 
-import org.mapstruct.BeforeMapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.TargetType;
-
 import java.util.IdentityHashMap;
 import java.util.Map;
 
 public class CycleAvoidingMappingContext {
-    Map<Object, Object> knownInstances = new IdentityHashMap<Object, Object>();
+    private final Map<Object, Object> knownInstances = new IdentityHashMap<>();
 
-    @BeforeMapping
-    public <T> T getMappedInstance(Object source, @TargetType Class<T> targetType) {
+    @SuppressWarnings("unchecked")
+    public <T> T getMappedInstance(Object source, Class<T> targetType) {
         return (T) knownInstances.get(source);
     }
 
-    @BeforeMapping
-    public void storeMappedInstance(Object source, @MappingTarget Object target) {
+    public void storeMappedInstance(Object source, Object target) {
         knownInstances.put(source, target);
     }
 }

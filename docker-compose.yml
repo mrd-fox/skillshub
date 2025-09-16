@@ -1,8 +1,10 @@
 volumes:
   postgres-data:
     driver: local
-  rabbitmq-data:
+  minio-data:
     driver: local
+#  rabbitmq-data:
+#    driver: local
 services:
   postgres-db:
     restart: unless-stopped
@@ -24,6 +26,24 @@ services:
       test: [ "CMD", "pg_isready", "-U", "root" ]
       interval: 3s
       retries: 10
+
+  minio:
+    restart: unless-stopped
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # console web
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+
+
+
+
 #  rabbitmq:
 #    restart: unless-stopped
 #    build: rabbitmq
