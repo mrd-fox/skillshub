@@ -1,29 +1,60 @@
 volumes:
-  postgres-data:
+  postgres-course-data:
+    driver: local
+  postgres-storage-data:
     driver: local
   minio-data:
     driver: local
+# todo to init rabbit
 #  rabbitmq-data:
 #    driver: local
 services:
-  postgres-db:
-    restart: unless-stopped
+  #  postgres-db:
+  #    restart: unless-stopped
+  #    image: postgres:15
+  #    environment:
+  #      POSTGRES_DB: skills_hub
+  #      POSTGRES_USER: root
+  #      POSTGRES_PASSWORD: root
+  #    ports:
+  #      - "5433:5432"
+  #    volumes:
+  #      - postgres-data:/var/lib/postgresql/data
+  #    #      - mariabd-data:/var/lib/mysql
+  #    container_name: postgres
+  #    healthcheck:
+  #      test: [ "CMD", "pg_isready", "-U", "root" ]
+  #      interval: 3s
+  #      retries: 10
+  postgres-course:
     image: postgres:15
+    container_name: postgres-course
     environment:
-      POSTGRES_DB: skills_hub
+      POSTGRES_DB: course_service
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      #      - MYSQL_ROOT_PASSWORD=
-      #      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      #      - MARIADB_EXTRA_FLAGS=--max-connect-errors=1000 --max-connections=1000 --log_error --log_warnings=4 --slow-query-log --log-queries-not-using-indexes --min-examined-row-limit=100
     ports:
       - "5433:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    #      - mariabd-data:/var/lib/mysql
-    container_name: postgres
+      - postgres-course-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "root" ]
+      test: [ "CMD-SHELL", "pg_isready -U root -d course_service" ]
+      interval: 3s
+      retries: 10
+
+  postgres-storage:
+    image: postgres:15
+    container_name: postgres-storage
+    environment:
+      POSTGRES_DB: storage_service
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-storage-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U root -d storage_service" ]
       interval: 3s
       retries: 10
 
@@ -42,8 +73,7 @@ services:
     command: server /data --console-address ":9001"
 
 
-
-
+#todo to init rabbit
 #  rabbitmq:
 #    restart: unless-stopped
 #    build: rabbitmq

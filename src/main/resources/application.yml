@@ -11,14 +11,14 @@ spring:
     name: @project.artifactId@
 
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5433/skills_hub
-    username: root
-    password: root
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 3
-      max-lifetime: 1800000
-
+    course:
+      url: jdbc:postgresql://localhost:5433/course_service
+      username: root
+      password: root
+    storage:
+      url: jdbc:postgresql://localhost:5434/storage_service
+      username: root
+      password: root
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
