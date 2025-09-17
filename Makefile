@@ -38,11 +38,11 @@ diagram_generate:
 	mvn uml-generator:generate
 
 # #######################################################################################
-# Liquibase commands
+# Liquibase commands for course_service (PostgreSQL)
 # #######################################################################################
 
 LIQUIBASE_VARIABLES = 	-Dliquibase.changeLogFile=db/changelog/db.changelog-master.yaml \
-						-Dliquibase.url=jdbc:postgresql://127.0.0.1:5433/skills_hub \
+						-Dliquibase.url=jdbc:postgresql://127.0.0.1:5433/course_service \
 						-Dliquibase.username=root \
 						-Dliquibase.password=root \
 						-Dliquibase.contexts=$(CONTEXT)
@@ -58,3 +58,36 @@ migration_sync: compile
 
 migration_clear: compile
 	mvn ${LIQUIBASE_VARIABLES} liquibase:clearChekSums
+
+# #######################################################################################
+# Liquibase commands for storage_service (PostgreSQL)
+# #######################################################################################
+
+LIQUIBASE_STORAGE = 	-Dliquibase.changeLogFile=db/changelog/db.changelog-master.yaml \
+					-Dliquibase.url=jdbc:postgresql://127.0.0.1:5434/storage_service \
+					-Dliquibase.username=root \
+					-Dliquibase.password=root \
+					-Dliquibase.contexts=$(CONTEXT)
+
+storage_migration_up: compile
+	mvn ${LIQUIBASE_STORAGE} liquibase:update
+
+storage_migration_down: compile
+	mvn ${LIQUIBASE_STORAGE} liquibase:rollback -Dliquibase.rollbackCount=1
+
+storage_migration_sync: compile
+	mvn ${LIQUIBASE_STORAGE} liquibase:changelogSync
+
+storage_migration_clear: compile
+	mvn ${LIQUIBASE_STORAGE} liquibase:clearCheckSums
+
+# #######################################################################################
+# MinIO commands
+# #######################################################################################
+
+# Exemple : créer les buckets initiaux
+create_minio_buckets:
+	@echo "Creating initial MinIO buckets..."
+	@docker exec -it minio mc alias set local http://localhost:9000 minioadmin minioadmin
+	@docker exec -it minio mc mb local/course-videos || true
+	@docker exec -it minio mc mb local/course-thumbnails || true

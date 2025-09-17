@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.storage.adapter.configminio;
+package com.simplon_project.skillhub.skillhub.storage.config;
 
 import io.minio.MinioClient;
 import org.springframework.beans.factory.annotation.Value;
