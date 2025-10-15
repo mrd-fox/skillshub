@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
@@ -17,25 +18,32 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())        // <— ACTIVE CORS dans la chaîne Spring Security
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").permitAll()
                         .anyRequest().permitAll()
-                )
-                .csrf(AbstractHttpConfigurer::disable);
+                );
 
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:10020"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // Seulement avec origine explicite
+        CorsConfiguration cfg = new CorsConfiguration();
+        // Origin du FRONT (Vite) — ajuste si nécessaire
+        cfg.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        // ⬇️ AJOUT ICI de "X-User-Id"
+        cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-User-Id"));
+        cfg.setExposedHeaders(List.of("Location"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        //todo  Cible tes routes storage (ou "/**" si tu préfères tout ouvrir en dev)
+        source.registerCorsConfiguration("/**", cfg);
         return source;
     }
 }

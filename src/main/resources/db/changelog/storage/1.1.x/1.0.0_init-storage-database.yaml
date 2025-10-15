@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-126_create-media-files
+      author: Marina DARDE
+      labels: storage,media
+      context: storage
+      changes:
+        - createTable:
+            tableName: media_files
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: filename
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: size
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploader_id
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: chapter_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_path
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: media_files
+            cascadeConstraints: true

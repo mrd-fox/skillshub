@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-126_add-indexes-media-files
+      author: Marina DARDE
+      labels: storage,media
+      context: storage
+      changes:
+        - createIndex:
+            indexName: idx_media_files_course
+            tableName: media_files
+            columns:
+              - column:
+                  name: course_id
+        - createIndex:
+            indexName: idx_media_files_chapter
+            tableName: media_files
+            columns:
+              - column:
+                  name: chapter_id
+        - createIndex:
+            indexName: uq_media_files_storage_path
+            tableName: media_files
+            unique: true
+            columns:
+              - column:
+                  name: storage_path
+      rollback:
+        - dropIndex:
+            indexName: uq_media_files_storage_path
+            tableName: media_files
+        - dropIndex:
+            indexName: idx_media_files_chapter
+            tableName: media_files
+        - dropIndex:
+            indexName: idx_media_files_course
+            tableName: media_files

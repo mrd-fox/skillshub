@@ -5,9 +5,9 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 
@@ -17,7 +17,7 @@ public class CourseUseCases implements CreateCoursePort, UploadMediaPort {
 
     private final SaveCoursePort saveCoursePort;
 
-    @Transactional
+    @Transactional("courseTxManager")
     @Override
     public Course createCourse(CreateCourseCommand command) {
         var course = command.mapToDomain();

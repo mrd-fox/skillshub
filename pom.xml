@@ -63,6 +63,11 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus-simpleclient</artifactId>
+            <version>1.13.5</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
@@ -93,6 +98,12 @@
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-core</artifactId>
             <version>1.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
         <!--==================================================================
          = H2
@@ -195,7 +206,7 @@
         </dependency>
 
         <!--==================================================================
-         = ARCUNIT
+         = TESTS
          ================================================================== -->
 
         <dependency>
@@ -204,24 +215,24 @@
             <version>${archunit-junt5.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-        <!-- ENV -->
         <!--        <dependency>-->
         <!--            <groupId>io.github.cdimascio</groupId>-->
         <!--            <artifactId>dotenv-java</artifactId>-->
         <!--            <version>3.0.0</version>-->
         <!--        </dependency>-->
-        <!-- Messaging -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.springframework.boot</groupId>-->
-        <!--            <artifactId>spring-boot-starter-amqp</artifactId>-->
-        <!--        </dependency>-->
-        <!-- AWS S3 (Optional) -->
-        <!--        <dependency>-->
-        <!--            <groupId>io.awspring.cloud</groupId>-->
-        <!--            <artifactId>spring-cloud-starter-aws</artifactId>-->
-        <!--            <version>2.4.2</version>-->
-        <!--        </dependency>-->
+        <!--==================================================================
+         = MESSAGING
+         ================================================================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <!-- Keycloack -->
         <!--        <dependency>-->
         <!--            <groupId>org.keycloak</groupId>-->
@@ -229,6 +240,11 @@
         <!--            <version>21.1.1</version>-->
         <!--        </dependency>-->
         <!-- Monitoring and Tools -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+            <version>1.12.770</version>
+        </dependency>
 
 
     </dependencies>

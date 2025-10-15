@@ -37,3 +37,5 @@ build/
 *.env
 .env
 /envs
+
+tmp/

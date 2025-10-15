@@ -12,12 +12,14 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 
 @Configuration
+@EnableTransactionManagement
 @EnableJpaRepositories(
-        basePackages = "com.simplon_project.skillhub.skillhub.storage",
+        basePackages = "com.simplon_project.skillhub.skillhub.storage.adapter.out.persistence",
         entityManagerFactoryRef = "storageEntityManager",
         transactionManagerRef = "storageTxManager"
 )
@@ -40,7 +42,7 @@ public class StorageDbConfig {
     public LocalContainerEntityManagerFactoryBean storageEntityManager() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(storageDataSource());
-        em.setPackagesToScan("com.simplon_project.skillhub.skillhub.storage");
+        em.setPackagesToScan("com.simplon_project.skillhub.skillhub.storage.adapter.out.persistence");
         em.setPersistenceUnitName("storagePU");
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();

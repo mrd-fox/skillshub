@@ -12,12 +12,14 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 
 @Configuration
+@EnableTransactionManagement
 @EnableJpaRepositories(
-        basePackages = "com.simplon_project.skillhub.skillhub.course",
+        basePackages = "com.simplon_project.skillhub.skillhub.course.adapter.out.percistence",
         entityManagerFactoryRef = "courseEntityManager",
         transactionManagerRef = "courseTxManager"
 )
@@ -40,7 +42,7 @@ public class CourseDbConfig {
     public LocalContainerEntityManagerFactoryBean courseEntityManager() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(courseDataSource());
-        em.setPackagesToScan("com.simplon_project.skillhub.skillhub.course");
+        em.setPackagesToScan("com.simplon_project.skillhub.skillhub.course.adapter.out.percistence");
         em.setPersistenceUnitName("coursePU");
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
@@ -61,6 +63,8 @@ public class CourseDbConfig {
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setDataSource(courseDataSource());
         liquibase.setChangeLog("classpath:db/changelog/course/changelog-course-master.yaml");
+        liquibase.setDefaultSchema("public"); // ou le schema que tu veux
+        liquibase.setShouldRun(true);
         return liquibase;
     }
 }

@@ -7,9 +7,15 @@ springdoc:
     doc-expansion: none
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 1GB
+      max-request-size: 1GB
+      file-size-threshold: 5MB
   application:
     name: @project.artifactId@
-
+  profiles:
+    active: usage_message
   datasource:
     course:
       url: jdbc:postgresql://localhost:5433/course_service
@@ -28,10 +34,75 @@ spring:
     hibernate:
       ddl-auto: none
 
-  liquibase:
-    enabled: false
+  bucket: storage
+  prefix: "media"
+  presign-ttl-seconds: 900
 
+# actuator (sdk metrics)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info
+  endpoint:
+    prometheus:
+      access: unrestricted
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USER:admin}
+  password: ${RABBITMQ_PASS:admin}
+  virtual-host: ${RABBITMQ_VHOST:/}
+  connection-timeout: 5000
+
+storage:
+  rabbitmq:
+    exchange: ${RABBITMQ_EXCHANGE:course.events}
+    upload-routing-key: ${RABBITMQ_ROUTING_KEY:course.media.uploaded.v1}
+    metadata-routing-key: ${RABBITMQ_ROUTING_KEY_METADATA:course.media.metadata.extracted.v1}
+    uploaded-queue: ${RABBITMQ_QUEUE_UPLOADED:course.media.uploaded.queue}
+    metadata-queue: ${RABBITMQ_QUEUE_METADATA:course.media.metadata.extracted.queue}
+  #    default-receive-queue: ${RABBITMQ_QUEUE:course.media.uploaded.queue}
+  bucket: storage
+  prefix: media
+  presign-ttl-seconds: 900
+  tempDir: ${STORAGE_TMP_DIR:./tmp}
+  worker:
+    max-concurrent: ${MAX_CONCURRENT:2}
+    min-free-space-mb: ${MIN_FREE_SPACE_MB:1000}
+
+course:
+  rabbitmq:
+    exchange: ${RABBITMQ_EXCHANGE:course.events}
+    upload-routing-key: ${RABBITMQ_ROUTING_KEY:course.media.uploaded.v1}
+    metadata-routing-key: ${RABBITMQ_METADATA_ROUTING_KEY:course.media.metadata.extracted.v1}
+    uploaded-queue: ${RABBITMQ_UPLOADED_QUEUE:course.media.uploaded.queue}
+    metadata-queue: ${RABBITMQ_METADATA_QUEUE:course.media.metadata.extracted.queue}
 minio:
-  url: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  url: ${MINIO_URL:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  bucket: ${MINIO_BUCKET:storage}
+
+logging:
+  file:
+    #    name: C:\Users\Dockerlogs\app.log
+    name: logs/skillhub.log
+  #    pattern:
+  #      console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/skillhub-storage-%d{yyyy-MM-dd}.log
+      max-history: 7   # garde les logs des 7 derniers jours
+      total-size-cap: 1GB
+  level:
+    root: INFO
+    com.simplon_project.skillhub: DEBUG
+    org.springframework.amqp: DEBUG
+    com.rabbitmq.client: DEBUG
+
+
+
+
+
