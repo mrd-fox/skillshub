@@ -5,8 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.time.Duration;
-
 @Entity
 @Table(name = "\"videos\"")
 @AllArgsConstructor
@@ -15,23 +13,31 @@ import java.time.Duration;
 @Getter
 @Setter
 @Builder
+@EqualsAndHashCode(callSuper = true)
 public class VideoEntity extends AbstractBaseEntity {
     @EmbeddedId
     private EntityId videoId;
 
+    @Column(name = "storage_key", nullable = false, unique = true)
     private String storageKey;
 
+    @Column(name = "format")
     private String format;
 
+    @Column(name = "size")
     private Long size; // en octets
 
+    @Column(name = "width")
     private Integer width;
 
+    @Column(name = "height")
     private Integer height;
 
-    private Duration duration;
+    @Column(name = "duration")
+    private Long duration;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private VideoStatusEnum status;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

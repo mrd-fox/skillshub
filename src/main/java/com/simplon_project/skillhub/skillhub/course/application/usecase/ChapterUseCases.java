@@ -6,8 +6,8 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 import com.simplon_project.skillhub.skillhub.course.application.port.out.CourseRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
@@ -20,7 +20,7 @@ public class ChapterUseCases implements CreateChapterPort {
     }
 
     @Override
-    @Transactional
+    @Transactional("courseTxManager")
     public Course createChapter(CreateChapterCommand command) {
         var course = findCourseById(Id.of(command.courseId()));
         var section = course.getSectionById(Id.of(command.sectionId()));

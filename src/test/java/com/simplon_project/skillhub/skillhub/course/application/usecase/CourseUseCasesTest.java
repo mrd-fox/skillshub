@@ -1,6 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 public class CourseUseCasesTest {
 
     @Mock
-    private CourseJpaRepository courseJpaRepository;
+    private JpaCourseRepository courseJpaRepository;
 
     @Mock
     private SaveCoursePort saveCoursePort;

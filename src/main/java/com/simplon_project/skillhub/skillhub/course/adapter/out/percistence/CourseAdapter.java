@@ -4,27 +4,31 @@ import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.Cou
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 
 @Component
-@RequiredArgsConstructor
+@Transactional("courseTxManager")
 public class CourseAdapter implements SaveCoursePort, FindCoursePort {
-    private final CourseJpaRepository courseJpaRepository;
+
+    private final JpaCourseRepository courseJpaRepository;
+    private final EntityManager entityManager;
 
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    public CourseAdapter(JpaCourseRepository jpaCourseRepository,
+                         @Qualifier("courseEntityManager") EntityManager entityManager) {
+        this.courseJpaRepository = jpaCourseRepository;
+        this.entityManager = entityManager;
+    }
 
     @Override
     public void assertCourseNotExists(Course course) {
@@ -34,7 +38,7 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
         }
     }
 
-    @Transactional
+    @Transactional("courseTxManager")
     public Course saveCourse(Course course) {
         var courseEntity = CourseEntityMapper.mapToEntity(course, new CycleAvoidingMappingContext());
         var saved = courseJpaRepository.saveAndFlush(courseEntity);

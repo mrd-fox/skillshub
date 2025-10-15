@@ -22,6 +22,4 @@ public class JacksonConfiguration {
                 .setDateFormat(new StdDateFormat());
     }
 
-//    @Bean
-//    public JsonMergePatchHelper
 }

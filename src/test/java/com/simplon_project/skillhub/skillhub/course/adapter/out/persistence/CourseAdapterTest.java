@@ -5,7 +5,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.Cour
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.CourseJpaRepository;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ public class CourseAdapterTest {
     CourseEntityMapper courseEntityMapper;
 
     @Mock
-    CourseJpaRepository courseJpaRepository;
+    JpaCourseRepository courseJpaRepository;
 
     @InjectMocks
     private CourseAdapter courseAdapter;

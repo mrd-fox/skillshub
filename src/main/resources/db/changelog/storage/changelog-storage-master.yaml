@@ -1,1 +1,11 @@
 databaseChangeLog:
+  - include:
+      file: db/changelog/storage/1.1.x/1.0.0_init-storage-database.yaml
+  - include:
+      file: db/changelog/storage/1.1.x/1.0.1_add-indexes-media-files.yaml
+  - include:
+      file: db/changelog/storage/1.1.x/1.0.2_add-constraints-media-files.yaml
+  - include:
+      file: db/changelog/storage/1.1.x/1.0.3_add-columns-media-files.yaml
+  - include:
+      file: db/changelog/storage/1.1.x/1.0.4_modify-columns-media-files.yaml

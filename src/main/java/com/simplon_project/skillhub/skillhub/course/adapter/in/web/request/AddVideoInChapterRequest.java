@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
-
 public record AddVideoInChapterRequest(
         @NotBlank
         String format,
@@ -31,7 +29,7 @@ public record AddVideoInChapterRequest(
                 chapterId,
                 file,
                 format,
-                Duration.ofSeconds(durationInSeconds),
+                durationInSeconds,
                 width,
                 height,
                 file.getSize()

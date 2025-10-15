@@ -9,7 +9,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,7 +19,7 @@ public record AddVideoCommand(
         @NotBlank String chapterId,
         @NotNull MultipartFile file,
         @NotBlank String format,
-        @NotNull Duration duration,
+        @NotNull Long duration,
         @Positive int width,
         @Positive int height,
         @Min(1) long size
@@ -32,11 +31,10 @@ public record AddVideoCommand(
         if (chapterId == null || chapterId.isBlank()) throw new IllegalArgumentException("chapterId is required");
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("video file is required");
         if (width < 1280 || height < 720) throw new IllegalArgumentException("Minimum video resolution is 1280x720");
-        if (duration.toSeconds() < 10) throw new IllegalArgumentException("Video must be at least 10 seconds long");
+        if (duration < 10) throw new IllegalArgumentException("Video must be at least 10 seconds long");
         if (!Set.of("mp4", "webm", "mov").contains(format.toLowerCase()))
             throw new IllegalArgumentException("Unsupported video format: " + format);
         if (size > 500 * 1024 * 1024) throw new IllegalArgumentException("Video size must be less than 500MB");
-
     }
 
     private static String generateStorageKey(String courseId, String sectionId, String chapterId) {
@@ -46,7 +44,8 @@ public record AddVideoCommand(
     public VideoInfo mapToDomain() {
         return new VideoInfo(
                 Id.random(),
-                generateStorageKey(courseId, sectionId, chapterId), duration,
+                generateStorageKey(courseId, sectionId, chapterId),
+                duration,
                 format.toLowerCase(),
                 size,
                 width,

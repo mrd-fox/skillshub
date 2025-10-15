@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.VideoResponse;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
 
 public class VideoResponseMapper {
@@ -13,7 +14,7 @@ public class VideoResponseMapper {
                 video.size(),
                 video.width(),
                 video.height(),
-                video.status()
+                VideoStatusEnum.valueOf(video.status().name())
         );
     }
 }
