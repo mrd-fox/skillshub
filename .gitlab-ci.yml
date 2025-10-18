@@ -1,169 +1,115 @@
-image: maven:3.9.9-eclipse-temurin-21  # Utilise l'image avec Java 21 et Maven 3.9.9
+# Utilise l'image avec Java 21 et Maven 3.9.9
+image: maven:3.9.9-eclipse-temurin-21
 
 variables:
   DOCKER_HOST: "unix:///var/run/docker.sock"  # Utilise Docker sans DIND
-  MYSQL_DATABASE: "testdb"
-  MYSQL_USER: "root"
-  MYSQL_PASSWORD: ""
-
+  POSTGRES_USER: root
+  POSTGRES_PASSWORD: root
+  POSTGRES_DB: liquibase_test
+  MAVEN_CLI_OPTS: "-B -Dmaven.test.failure.ignore=false"
 stages:
   - build
   - test
+  - liquibase
+  - sonar
 
+cache:
+  key: "${CI_JOB_NAME}"
+  paths:
+    - .m2/repository
+    - .sonar/cache
 build:
   stage: build
   script:
-    - echo "Build de l'application..."
+    - echo "Build project"
     - mvn clean package -DskipTests  # Compile sans exécuter les tests
   artifacts:
     paths:
       - target/*.jar  # Sauvegarde le JAR pour les étapes suivantes
-
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
 unit_test:
   stage: test
-  #  services:
-  #    - name: library/mariadb:10.6.17  # L'image du service MariaDB
-  #      alias: mariadb
-  #      command: [ "--wait_timeout=600" ]
-  #      variables:
-  #        MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-  #        MYSQL_ROOT_PASSWORD: ""  # Définir un mot de passe root
-  #        MYSQL_DATABASE: skills-hub  # Créer une base de données à utiliser dans les tests
-  #        MYSQL_USER: root  # Créer un utilisateur
   script:
-    #    - echo "Attente de MariaDB..."
-    #    - until mysqladmin ping -h "mariadb" --silent; do sleep 2; done  # Attendre que MariaDB soit prêt
-    #    - echo "MariaDB est prête !"
-    - echo "Exécution des tests..."
-    - mvn test
-after_script:
-  - docker ps -a
-#image: maven:latest
-#
-#services:
-#  - docker:20.10.7-dind
-#variables:
-#  DOCKER_TLS_CERTDIR: "/certs"
-#  DOCKER_HOST: "tcp://docker:2375"
-#  MAVEN_OPTS: >-
-#    -Dhttps.protocols=TLSv1.2
-#    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
-#    -Dorg.slf4j.simpleLogger.showDateTime=true
-#    -Djava.awt.headless=true
-#
-#  MAVEN_CLI_OPTS: >-
-#    --batch-mode
-#    --errors
-#    --fail-at-end
-#    --show-version
-#    --no-transfer-progress
-#    -DinstallAtEnd=true
-#    -DdeployAtEnd=true
-#
-## Cache des dépendances Maven pour accélérer les builds
-#cache:
-#  paths:
-#    - .m2/repository
-#
-## Stages du pipeline
-#stages:
-#  - setup
-#  - test
-#
-## Job pour installer Docker et démarrer MariaDB sans Docker Compose
-#setup-docker:
-#  stage: setup
-#  script:
-#    - echo "Installing Docker..."
-#    - apt-get update && apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-#    - curl -fsSL https://get.docker.com -o get-docker.sh
-#    - sh get-docker.sh
-#
-#    # Vérifier l'installation de Docker
-#    - docker --version
-#
-#    # Lancer MariaDB en tant que conteneur Docker
-#    - echo "Starting MariaDB container..."
-#      docker run -d --name mariadb -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -e MARIADB_EXTRA_FLAGS="--max-connect-errors=1000 --max-connections=1000 --log_error --log_warnings=4 --slow-query-log --log-queries-not-using-indexes --min-examined-row-limit=100" -p 3306:3306 library/mariadb:10.6.17
-#    # Vérifier si le conteneur MariaDB est en course d'exécution
-#    - docker ps
-#
-#    # Attendre que MariaDB soit prêt
-#    - sleep 15
-#
-## Job pour exécuter les tests Maven
-#verify:
-#  stage: test
-#  script:
-#    - echo "Running Maven tests..."
-#    - mvn clean install $MAVEN_CLI_OPTS
-#    - mvn $MAVEN_CLI_OPTS verify
-#
-## Nettoyage après l'exécution des tests
-#after_script:
-#  - echo "Stopping MariaDB container..."
-#  - docker stop mariadb
-#  - docker rm mariadb
-#
+    - echo "➡️ Exécution des tests unitaires avec JaCoCo"
+    - mvn clean verify -Psonar
+  artifacts:
+    paths:
+      - target/site/jacoco/jacoco.xml
+    expire_in: 1 week
+  needs:
+    - build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
 
-#image: maven:latest
-#
-#stages:
-#  - build
-#  - test
-#  - package
-#  - deploy
-#
-#build-job:
-#  stage: build
-#  script:
-#    - echo "Compiling the code ..."
-#    - "mvn compile"
-#    - echo "Compile complete"
-#
-#
-#test-all-job:
-#  stage: test
-#  image:
-#    name: maven:latest  # Utiliser l'image Maven avec Docker Compose
-#  services:
-#    - docker:dind
-#  before_script:
-#    - echo "Setting up Docker Compose"
-#    # Installer Docker Compose
-#    - curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-#    - chmod +x /usr/local/bin/docker-compose
-#    - docker --version
-#    - docker-compose --version
-#  script:
-#    - echo "Running unit tests... This will take about 60 seconds"
-#    - docker-compose  up -d mariadb
-#    - "mvn clean install"
-#    - echo "Tests completed"
-#  after_script:
-#    - docker-compose  down
-#    #test-unit-job:
-#    #  stage: test
-#    #  only:
-#    #    - main
-#    #  script:
-#    #    - mvn clean package
-#    #    - cp target/skills-hub*.jar skills-hub-${CI_COMMIT_SHA}.jar
-#    #  artifacts:
-#    #    name: skills-hub
-#    #    expire_in: 1 week
-#    #    paths:
-#    #      - skills-hub-${CI_COMMIT_SHA}.jar
-#
-#
-#    #package-job:
-#    #  stage: package
-#    #  script:
-#    #    - echo "Package the code"
-#    #    - mvn package
-#    #deploy-job:
-#    #  stage: deploy
-#    #  script:
-#    #    - echo "Deploying application ..."
-#    #    - echo "Application successfully deployed"
-#
+
+liquibase_test:
+  stage: liquibase
+  image: liquibase/liquibase:4.27
+  services:
+    - name: postgres:15
+      alias: postgres
+  variables:
+    PGPASSWORD: $POSTGRES_PASSWORD
+  script:
+    - echo "🔧 Installing PostgreSQL client..."
+    - apt-get update && apt-get install -y postgresql-client
+    - echo "⏳ Waiting for PostgreSQL to be ready..."
+    - |
+      until (echo > /dev/tcp/postgres/5432) >/dev/null 2>&1; do
+        echo "Postgres not ready yet..."
+        sleep 2
+      done
+    - echo "✅ PostgreSQL is up and running."
+
+    # =========================
+    # 🔹 Vérifie le schéma course
+    # =========================
+    - echo "Test Liquibase — module course"
+
+    - liquibase --classpath=src/main/resources --changelog-file=db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"   --username="${POSTGRES_USER}"   --password="${POSTGRES_PASSWORD}"   update
+
+    # ✅ Rollback 1 version du schéma course
+    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}"  rollback-count 1
+
+    # =========================
+    # 🔹 Vérifie le schéma storage
+    # =========================
+    - echo "Test Liquibase — module storage"
+    # ⚠️ Même correction : `--changelog-file` en minuscules
+    # ⚠️ Supprimer la ligne "- |" vide (elle casse le script YAML)
+    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" update
+
+    # ✅ Rollback 1 version du schéma storage
+    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}" --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" rollback-count 1
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
+sonar_analysis:
+  stage: sonar
+  image: maven:3.9.9-eclipse-temurin-21
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  needs:
+    - job: unit_test
+      optional: true
+  script:
+    - echo "🚀 Analyse SonarCloud"
+    - mvn  verify sonar:sonar -Dsonar.projectKey=simplon_skillhub_e-learning-monolith-back -Dsonar.organization=simplon-skillhub  -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
