@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Injection du nom d'application -->
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="skillhub-app"/>
+
+    <!-- 🔹 Appender console (pour voir les logs en terminal) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 🔹 Appender fichier (rotation quotidienne) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Fichier actif du jour -->
+        <file>logs/${appName}.log</file>
+
+        <!-- Politique de rotation par date -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Fichier renommé automatiquement selon la date -->
+            <fileNamePattern>logs/${appName}-%d{yyyy-MM-dd}.log</fileNamePattern>
+
+            <!-- Nombre de jours à garder -->
+            <maxHistory>14</maxHistory>
+
+            <!-- Optionnel : taille max de chaque fichier (si beaucoup de logs par jour) -->
+            <!-- <totalSizeCap>1GB</totalSizeCap> -->
+        </rollingPolicy>
+
+        <!-- Format des logs -->
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 🔹 Niveau racine -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <!-- 🔹 Loggers spécifiques -->
+    <logger name="com.simplon_project.skillhub" level="DEBUG"/>
+    <logger name="org.springframework.amqp" level="DEBUG"/>
+    <logger name="com.rabbitmq.client" level="DEBUG"/>
+
+</configuration>

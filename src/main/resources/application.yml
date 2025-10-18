@@ -38,7 +38,9 @@ spring:
   prefix: "media"
   presign-ttl-seconds: 900
 
-# actuator (sdk metrics)
+############################################################
+# 📈 ACTUATOR & METRICS (Prometheus / Grafana)
+############################################################
 management:
   endpoints:
     web:
@@ -47,6 +49,9 @@ management:
   endpoint:
     prometheus:
       access: unrestricted
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 rabbitmq:
   host: ${RABBITMQ_HOST:localhost}
@@ -85,17 +90,11 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:minioadmin123}
   bucket: ${MINIO_BUCKET:storage}
 
+
+############################################################
+# 📜 LOGGING CONFIGURATION
+############################################################
 logging:
-  file:
-    #    name: C:\Users\Dockerlogs\app.log
-    name: logs/skillhub.log
-  #    pattern:
-  #      console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"
-  logback:
-    rollingpolicy:
-      file-name-pattern: logs/skillhub-storage-%d{yyyy-MM-dd}.log
-      max-history: 7   # garde les logs des 7 derniers jours
-      total-size-cap: 1GB
   level:
     root: INFO
     com.simplon_project.skillhub: DEBUG
