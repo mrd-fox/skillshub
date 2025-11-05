@@ -1,5 +1,5 @@
 server:
-  port: 10020
+  port: ${SERVER_PORT:10020}
 
 springdoc:
   swagger-ui:
@@ -15,16 +15,16 @@ spring:
   application:
     name: @project.artifactId@
   profiles:
-    active: usage_message
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     course:
-      url: jdbc:postgresql://localhost:5433/course_service
-      username: root
-      password: root
+      url: ${SPRING_DATASOURCE_COURSE_URL:jdbc:postgresql://localhost:5433/course_service}
+      username: ${SPRING_DATASOURCE_COURSE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_COURSE_PASSWORD:root}
     storage:
-      url: jdbc:postgresql://localhost:5434/storage_service
-      username: root
-      password: root
+      url: ${SPRING_DATASOURCE_STORAGE_URL:jdbc:postgresql://localhost:5434/storage_service}
+      username: ${SPRING_DATASOURCE_STORAGE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_STORAGE_PASSWORD:root}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
@@ -33,10 +33,9 @@ spring:
         format_sql: true
     hibernate:
       ddl-auto: none
-
-  bucket: storage
-  prefix: "media"
-  presign-ttl-seconds: 900
+  bucket: ${STORAGE_BUCKET:storage}
+  prefix: ${STORAGE_PREFIX:media}
+  presign-ttl-seconds: ${STORAGE_PRESIGN_TTL_SECONDS:900}
 
 ############################################################
 # 📈 ACTUATOR & METRICS (Prometheus / Grafana)
@@ -60,7 +59,9 @@ rabbitmq:
   password: ${RABBITMQ_PASS:admin}
   virtual-host: ${RABBITMQ_VHOST:/}
   connection-timeout: 5000
-
+############################################################
+# 📦 Storage Service
+############################################################
 storage:
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:course.events}
@@ -69,14 +70,16 @@ storage:
     uploaded-queue: ${RABBITMQ_QUEUE_UPLOADED:course.media.uploaded.queue}
     metadata-queue: ${RABBITMQ_QUEUE_METADATA:course.media.metadata.extracted.queue}
   #    default-receive-queue: ${RABBITMQ_QUEUE:course.media.uploaded.queue}
-  bucket: storage
-  prefix: media
-  presign-ttl-seconds: 900
+  bucket: ${STORAGE_BUCKET:storage}
+  prefix: ${STORAGE_PREFIX:media}
+  presign-ttl-seconds: ${STORAGE_PRESIGN_TTL_SECONDS:900}
   tempDir: ${STORAGE_TMP_DIR:./tmp}
   worker:
     max-concurrent: ${MAX_CONCURRENT:2}
     min-free-space-mb: ${MIN_FREE_SPACE_MB:1000}
-
+############################################################
+# 📦 Course Service
+############################################################
 course:
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:course.events}
@@ -84,6 +87,9 @@ course:
     metadata-routing-key: ${RABBITMQ_METADATA_ROUTING_KEY:course.media.metadata.extracted.v1}
     uploaded-queue: ${RABBITMQ_UPLOADED_QUEUE:course.media.uploaded.queue}
     metadata-queue: ${RABBITMQ_METADATA_QUEUE:course.media.metadata.extracted.queue}
+############################################################
+# 📦 MinIO
+############################################################
 minio:
   url: ${MINIO_URL:http://localhost:9000}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
@@ -98,8 +104,8 @@ logging:
   level:
     root: INFO
     com.simplon_project.skillhub: DEBUG
-    org.springframework.amqp: DEBUG
-    com.rabbitmq.client: DEBUG
+    org.springframework.amqp: INFO
+    com.rabbitmq.client: INFO
 
 
 
