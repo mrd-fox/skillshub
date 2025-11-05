@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/course/{courseId}/sections/{sectionId}")
+@RequestMapping("/api/course/{courseId}/sections/{sectionId}")
 public class CourseSectionChapterController {
     @PostMapping("/chapters/{chapterId}/video")
     @Operation(description = "Add a video to chapter")

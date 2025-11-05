@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/storage")
+@RequestMapping("/api/storage")
 public class StorageController {
 
     private final InitiateUploadPort initiateUploadPort;

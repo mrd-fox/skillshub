@@ -1,26 +1,19 @@
 volumes:
   postgres-course-data:
-    driver: local
   postgres-storage-data:
-    driver: local
   minio-data:
-    driver: local
   rabbitmq-data:
-    driver: local
   prometheus-data:
-    driver: local
   grafana-data:
-    driver: local
   loki-data:
-    driver: local
-  keycloak-data:
-    driver: local
-  postgres-keycloak-data:
-    driver: local
 
+#NB to create the network by "docker network create skillshub-net" commande
 networks:
-  backend:
-    driver: bridge
+  skillshub-net:
+    external: true
+
+
+
 services:
   postgres-course:
     restart: unless-stopped
@@ -28,6 +21,7 @@ services:
     container_name: postgres-course
     environment:
       POSTGRES_DB: course_service
+      #todo modify credentials
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:
@@ -38,6 +32,8 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U root -d course_service" ]
       interval: 3s
       retries: 10
+    networks:
+      - skillshub-net
 
   postgres-storage:
     restart: unless-stopped
@@ -45,6 +41,7 @@ services:
     container_name: postgres-storage
     environment:
       POSTGRES_DB: storage_service
+      #todo modify credentials
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:
@@ -55,6 +52,8 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U root -d storage_service" ]
       interval: 3s
       retries: 10
+    networks:
+      - skillshub-net
 
   minio:
     restart: unless-stopped
@@ -69,10 +68,12 @@ services:
     volumes:
       - minio-data:/data
     command: server /data --console-address ":9001"
+    networks:
+      - skillshub-net
 
   rabbitmq:
     restart: unless-stopped
-    build: rabbitmq
+    #    build: rabbitmq
     image: rabbitmq:3.13-management
     container_name: rabbitmq
     ports:
@@ -83,47 +84,8 @@ services:
       RABBITMQ_DEFAULT_PASS: admin
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-
-  postgres-keycloak:
-    image: postgres:15
-    container_name: postgres-keycloak
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres-keycloak-data:/var/lib/postgresql/data
     networks:
-      - backend
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
-      interval: 3s
-      retries: 10
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:25.0.2
-    container_name: keycloak
-    restart: unless-stopped
-    command:
-      - start-dev
-    environment:
-      KC_DB: postgres
-      KC_DB_URL_HOST: postgres-keycloak
-      KC_DB_URL_DATABASE: keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres-keycloak:
-        condition: service_healthy
-    networks:
-      - backend
+      - skillshub-net
 
   prometheus:
     image: prom/prometheus:latest
@@ -144,7 +106,7 @@ services:
       - rabbitmq
       - minio
     networks:
-      - backend
+      - skillshub-net
 
   grafana:
     image: grafana/grafana:latest
@@ -160,7 +122,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      - backend
+      - skillshub-net
 
   loki:
     image: grafana/loki:3.0.0
@@ -174,7 +136,7 @@ services:
       - loki-data:/loki    # volume docker persistant, créé automatiquement
     command: -config.file=/etc/loki/config.yml
     networks:
-      - backend
+      - skillshub-net
 
   promtail:
     image: grafana/promtail:3.0.0
@@ -191,8 +153,52 @@ services:
     depends_on:
       - loki
     networks:
-      - backend
+      - skillshub-net
 
+  backend-service:
+    build: .
+    container_name: backend-service
+    restart: unless-stopped
+    ports:
+      - "10020:10020"
+    env_file:
+      - ${ENV_FILE:-./envs/dev.env}
+    #    environment:
+    #      # Active le profil Docker
+    #      SPRING_PROFILES_ACTIVE: usage_message,docker
+    #
+    #      # Datasource Course
+    #      SPRING_DATASOURCE_COURSE_URL: jdbc:postgresql://postgres-course:5432/course_service
+    #      SPRING_DATASOURCE_COURSE_USERNAME: root
+    #      SPRING_DATASOURCE_COURSE_PASSWORD: root
+    #
+    #      # Datasource Storage
+    #      SPRING_DATASOURCE_STORAGE_URL: jdbc:postgresql://postgres-storage:5432/storage_service
+    #      SPRING_DATASOURCE_STORAGE_USERNAME: root
+    #      SPRING_DATASOURCE_STORAGE_PASSWORD: root
+    #
+    #      # RabbitMQ
+    #      RABBITMQ_HOST: rabbitmq
+    #      RABBITMQ_PORT: 5672
+    #      RABBITMQ_USER: admin
+    #      RABBITMQ_PASS: admin
+    #
+    #      # MinIO
+    #      MINIO_URL: http://minio:9000
+    #      MINIO_ACCESS_KEY: minioadmin
+    #      MINIO_SECRET_KEY: minioadmin123
+    #
+    #      # Monitoring
+    #      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: prometheus,health,info
+    depends_on:
+      - postgres-course
+      - postgres-storage
+      - rabbitmq
+      - minio
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - skillshub-net
 
 
 
