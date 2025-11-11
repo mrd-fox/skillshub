@@ -24,7 +24,6 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
     private final JpaCourseRepository courseJpaRepository;
     private final EntityManager entityManager;
 
-
     public CourseAdapter(JpaCourseRepository jpaCourseRepository,
                          @Qualifier("courseEntityManager") EntityManager entityManager) {
         this.courseJpaRepository = jpaCourseRepository;
