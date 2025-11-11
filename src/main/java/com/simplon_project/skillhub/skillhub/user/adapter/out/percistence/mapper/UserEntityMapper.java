@@ -16,7 +16,7 @@ public final class UserEntityMapper {
     private UserEntityMapper() {
     }
 
-    public static UserEntity toEntity(User domain, Set<RoleEntity> roleEntities) {
+    public static UserEntity mapToEntity(User domain) {
         return UserEntity.builder()
                 .id(EntityId.fromString(domain.getId().asString()))
                 .externalId(domain.getExternalId())
@@ -29,14 +29,12 @@ public final class UserEntityMapper {
                 .country(domain.getCountry())
                 .phoneNumber(domain.getPhoneNumber())
                 .active(domain.isActive())
-                .roles(roleEntities)
+                .roles(mapRolesToEntities(domain.getRoles()))
                 .build();
     }
 
-    public static User toDomain(UserEntity entity) {
-        Set<RolesEnum> roles = entity.getRoles().stream()
-                .map(RoleEntity::getName)
-                .collect(Collectors.toSet());
+    public static User mapToDomain(UserEntity entity) {
+
 
         return User.builder()
                 .id(Id.of(entity.getId().toString()))
@@ -49,9 +47,27 @@ public final class UserEntityMapper {
                 .country(entity.getCountry())
                 .phoneNumber(entity.getPhoneNumber())
                 .active(entity.isActive())
-                .roles(roles)
+                .roles(mapRolesToDomain(entity.getRoles()))
                 .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .build();
+    }
+
+    private static Set<RoleEntity> mapRolesToEntities(Set<RolesEnum> roles) {
+        if (roles == null || roles.isEmpty()) return Set.of();
+
+        return roles.stream()
+                .map(roleEnum -> RoleEntity.builder()
+                        .name(roleEnum)
+                        .build())
+                .collect(Collectors.toSet());
+    }
+
+    private static Set<RolesEnum> mapRolesToDomain(Set<RoleEntity> entities) {
+        if (entities == null || entities.isEmpty()) return Set.of();
+
+        return entities.stream()
+                .map(RoleEntity::getName)
+                .collect(Collectors.toSet());
     }
 }

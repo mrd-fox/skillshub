@@ -139,4 +139,6 @@ public class User extends Base {
     public boolean hasRole(RolesEnum role) {
         return this.roles.contains(role);
     }
+
+
 }
