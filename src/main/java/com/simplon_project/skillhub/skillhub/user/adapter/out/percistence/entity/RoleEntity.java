@@ -15,10 +15,11 @@ import lombok.*;
 @ToString
 public class RoleEntity {
 
+    @Getter
     @EmbeddedId
     private EntityId id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, unique = true, length = 50, name = "name")
     private RolesEnum name;
 }

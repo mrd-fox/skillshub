@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.user.adapter.out.percistence;
 
+import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.UserEntity;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.SaveUserPort;
@@ -14,21 +15,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserAdapter implements SaveUserPort {
 
     private final JpaUserRepository userJpaRepository;
+
     private final EntityManager entityManager;
 
 
     public UserAdapter(JpaUserRepository userJpaRepository,
                        @Qualifier("userEntityManager") EntityManager entityManager) {
         this.userJpaRepository = userJpaRepository;
+
         this.entityManager = entityManager;
     }
 
     @Override
     @Transactional("userTxManager")
-    public User saveUser(User user) {
-        var userEntity = UserEntityMapper.mapToEntity(user);
-        var saved = userJpaRepository.save(userEntity);
-        entityManager.refresh(saved);
+    public User saveUser(UserEntity userEntity) {
+        var saved = userJpaRepository.saveAndFlush(userEntity);
         return UserEntityMapper.mapToDomain(saved);
     }
 }

@@ -3,8 +3,10 @@ package com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.adapt
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.RoleEntity;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.UserEntity;
+import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaRoleRepository;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
+import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,10 +25,12 @@ public class UserRepositoryAdapter {
     /**
      * Save or update user entity in database.
      */
-    public UserEntity save(UserEntity user, Set<String> roleNames) {
-        Set<RoleEntity> roleEntities = roleRepository.findByNameIn(roleNames);
-        user.setRoles(roleEntities);
-        return userRepository.save(user);
+    public UserEntity save(User user) {
+        var roles = user.getRoles();
+        Set<RoleEntity> roleEntities = roleRepository.findByNameIn(roles);
+        var userEntity = UserEntityMapper.mapToEntity(user);
+        userEntity.setRoles(roleEntities);
+        return userRepository.saveAndFlush(userEntity);
     }
 
     /**
@@ -74,7 +78,7 @@ public class UserRepositoryAdapter {
     /**
      * Get a specific role by its name.
      */
-    public Optional<RoleEntity> findRoleByName(String name) {
-        return roleRepository.findByName(name);
-    }
+//    public Optional<RoleEntity> findRoleByName(String name) {
+//        return roleRepository.findByName(name);
+//    }
 }

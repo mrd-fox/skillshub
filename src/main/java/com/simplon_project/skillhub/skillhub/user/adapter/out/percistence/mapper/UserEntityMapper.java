@@ -8,6 +8,7 @@ import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
 import com.simplon_project.skillhub.skillhub.user.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,12 @@ public final class UserEntityMapper {
 
     private UserEntityMapper() {
     }
+
+    private static final Map<RolesEnum, EntityId> ROLE_ID_MAP = Map.of(
+            RolesEnum.STUDENT, EntityId.fromString("13fe3542-858f-4e20-8f52-1e6c35e78831"),
+            RolesEnum.TUTOR, EntityId.fromString("008b0f58-7d3d-4c3c-ac51-cf90a28010a7"),
+            RolesEnum.ADMIN, EntityId.fromString("5464d17e-15e0-4598-ae3e-0a2573e6bd76")
+    );
 
     public static UserEntity mapToEntity(User domain) {
         return UserEntity.builder()
@@ -29,7 +36,6 @@ public final class UserEntityMapper {
                 .country(domain.getCountry())
                 .phoneNumber(domain.getPhoneNumber())
                 .active(domain.isActive())
-                .roles(mapRolesToEntities(domain.getRoles()))
                 .build();
     }
 
@@ -42,6 +48,7 @@ public final class UserEntityMapper {
                 .firstName(entity.getFirstName())
                 .lastName(entity.getLastName())
                 .address(entity.getAddress())
+                .email(entity.getEmail())
                 .postalCode(entity.getPostalCode())
                 .city(entity.getCity())
                 .country(entity.getCountry())
@@ -58,6 +65,7 @@ public final class UserEntityMapper {
 
         return roles.stream()
                 .map(roleEnum -> RoleEntity.builder()
+                        .id(resolveRoleEntityId(roleEnum))
                         .name(roleEnum)
                         .build())
                 .collect(Collectors.toSet());
@@ -69,5 +77,13 @@ public final class UserEntityMapper {
         return entities.stream()
                 .map(RoleEntity::getName)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Resolve the fixed ID associated with a given role enum.
+     * Falls back to a random ID if the role is unknown (should never happen in production).
+     */
+    private static EntityId resolveRoleEntityId(RolesEnum role) {
+        return ROLE_ID_MAP.getOrDefault(role, EntityId.random());
     }
 }
