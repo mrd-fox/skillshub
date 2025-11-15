@@ -6,6 +6,9 @@ import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaRoleRepository;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadUserPort;
+import com.simplon_project.skillhub.skillhub.user.domain.exception.UserNotFoundException;
+import com.simplon_project.skillhub.skillhub.user.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class UserRepositoryAdapter {
+public class UserRepositoryAdapter implements LoadUserPort {
 
     private final JpaUserRepository userRepository;
     private final JpaRoleRepository roleRepository;
@@ -36,9 +39,14 @@ public class UserRepositoryAdapter {
     /**
      * Find user by ID.
      */
-    public Optional<UserEntity> findById(EntityId userId) {
-        return userRepository.findById(userId);
+
+    @Override
+    public User loadUserById(Id userId) {
+        UserEntity found = userRepository.findById(EntityId.of(userId.asUUID()))
+                .orElseThrow(() -> new UserNotFoundException(userId.asString()));
+        return UserEntityMapper.mapToDomain(found);
     }
+
 
     /**
      * Find user by external UUID (Keycloak ID).

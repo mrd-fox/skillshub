@@ -1,5 +1,6 @@
-package com.simplon_project.skillhub.skillhub.course.adapter.in.web.advice;
+package com.simplon_project.skillhub.skillhub.user.adapter.in.web.advice;
 
+import com.simplon_project.skillhub.skillhub.user.domain.exception.DomainException;
 import feign.FeignException;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.HttpHeaders;
@@ -18,11 +19,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletionException;
 
 @ControllerAdvice
-public class ExceptionHandler implements ProblemHandling, AdviceTrait {
+public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
     private static final String SOURCE_KEY = "sources";
     private final BuildProperties buildProperties;
 
-    public ExceptionHandler(BuildProperties buildProperties) {
+    public ExceptionUserHandler(BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
@@ -105,4 +106,22 @@ public class ExceptionHandler implements ProblemHandling, AdviceTrait {
             handleThrowable(problembuilder, problem, Objects.requireNonNull(problem.getStatus()), problem.getType());
         }
     }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(DomainException.class)
+    public ResponseEntity<Problem> handleDomainException(
+            DomainException ex,
+            NativeWebRequest request) {
+
+        Problem problem = Problem.builder()
+                .withStatus(ex.getStatus())
+                .withTitle(ex.getStatus().getReasonPhrase())
+                .withDetail(ex.getMessage())
+                .with("errorCode", ex.getClass().getSimpleName())
+                .with("errorMessage", ex.getMessage())
+                .with("sources", buildProperties.getName())
+                .build();
+
+        return create(ex, problem, request);
+    }
+
 }
