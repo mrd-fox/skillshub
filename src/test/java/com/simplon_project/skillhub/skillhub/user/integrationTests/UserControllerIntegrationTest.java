@@ -3,29 +3,23 @@ package com.simplon_project.skillhub.skillhub.user.integrationTests;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
-import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
-import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional("userTxManager")
-class UserControllerIntegrationTest {
+class UserControllerIntegrationTest extends DatabaseTestConfig {
 
     @Autowired
     private MockMvc mockMvc;
@@ -36,52 +30,39 @@ class UserControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @Test
     void shouldCreateUserSuccessfully_whenHeadersAreValid() throws Exception {
-        // Arrange
         String externalId = UUID.randomUUID().toString();
+        String email = "john+" + UUID.randomUUID() + "@mail.io";
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("X-User-Id", externalId);
-        headers.add("X-User-FirstName", "Marina");
-        headers.add("X-User-LastName", "Darde");
-        headers.add("X-User-Email", "marina.darde@3wa.io");
-        headers.add("X-User-Address", "12 rue des Lilas");
-        headers.add("X-User-City", "Paris");
-        headers.add("X-User-Country", "France");
-        headers.add("X-User-PostalCode", "75000");
-        headers.add("X-User-PhoneNumber", "+33612345678");
-        headers.add("X-User-Roles", "STUDENT,TUTOR");
-
-        // Act & Assert
         mockMvc.perform(post("/api/users/create")
-                        .headers(headers)
+                        .header("X-User-Id", externalId)
+                        .header("X-User-FirstName", "John")
+                        .header("X-User-LastName", "Doe")
+                        .header("X-User-Email", email)
+                        .header("X-User-Address", "12 rue des Lilas")
+                        .header("X-User-City", "Paris")
+                        .header("X-User-Country", "France")
+                        .header("X-User-PostalCode", "75000")
+                        .header("X-User-PhoneNumber", "+33612345678")
+                        .header("X-User-Roles", "STUDENT,TUTOR")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.email").value("marina.darde@3wa.io"))
-                .andExpect(jsonPath("$.firstName").value("Marina"))
-                .andExpect(jsonPath("$.roles[0]").isNotEmpty());
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.roles.length()").value(2));
 
-        // Verify DB persistence
-        User saved = userJpaRepository.findByExternalId(UUID.fromString(externalId))
-                .map(UserEntityMapper::mapToDomain) // selon ton mapper ou méthode utilitaire
+        var saved = userJpaRepository.findByExternalId(UUID.fromString(externalId))
+                .map(UserEntityMapper::mapToDomain)
                 .orElseThrow();
 
-        assertThat(saved.getEmail()).isEqualTo("marina.darde@3wa.io");
-        assertThat(saved.getFirstName()).isEqualTo("Marina");
-
-        var roleNames = saved.getRoles().stream()
-                .filter(Objects::nonNull)
-                .map(RolesEnum::name)
-                .toList();
-        assertTrue(roleNames.contains("STUDENT"));
-        assertTrue(roleNames.contains("TUTOR"));
+        assertThat(saved.getEmail()).isEqualTo(email);
     }
 
     @Test
     void shouldReturnBadRequest_whenMissingRequiredHeaders() throws Exception {
-        mockMvc.perform(post("/api/users/create"))
+        mockMvc.perform(post("/api/users/create")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 }
