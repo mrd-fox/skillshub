@@ -202,8 +202,8 @@ jobs:
       - name: SonarCloud Scan
         run: >
           mvn verify sonar:sonar
-          -Dsonar.projectKey=simplon_skillhub_e-learning-monolith-back
-          -Dsonar.organization=simplon-skillhub
-          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          -Dsonar.organization=${{ secrets.SONAR_ORG }}
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
           -Dsonar.login=${{ secrets.SONAR_TOKEN }}
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
