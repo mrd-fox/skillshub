@@ -1,115 +1,115 @@
-# Utilise l'image avec Java 21 et Maven 3.9.9
-image: maven:3.9.9-eclipse-temurin-21
-
-variables:
-  DOCKER_HOST: "unix:///var/run/docker.sock"  # Utilise Docker sans DIND
-  POSTGRES_USER: root
-  POSTGRES_PASSWORD: root
-  POSTGRES_DB: liquibase_test
-  MAVEN_CLI_OPTS: "-B -Dmaven.test.failure.ignore=false"
-stages:
-  - build
-  - test
-  - liquibase
-  - sonar
-
-cache:
-  key: "${CI_JOB_NAME}"
-  paths:
-    - .m2/repository
-    - .sonar/cache
-build:
-  stage: build
-  script:
-    - echo "Build project"
-    - mvn clean package -DskipTests  # Compile sans exécuter les tests
-  artifacts:
-    paths:
-      - target/*.jar  # Sauvegarde le JAR pour les étapes suivantes
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "master"'
-unit_test:
-  stage: test
-  script:
-    - echo "➡️ Exécution des tests unitaires avec JaCoCo"
-    - mvn clean verify -Psonar
-  artifacts:
-    paths:
-      - target/site/jacoco/jacoco.xml
-    expire_in: 1 week
-  needs:
-    - build
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "master"'
-
-
-liquibase_test:
-  stage: liquibase
-  image: liquibase/liquibase:4.27
-  services:
-    - name: postgres:15
-      alias: postgres
-  variables:
-    PGPASSWORD: $POSTGRES_PASSWORD
-  script:
-    - echo "🔧 Installing PostgreSQL client..."
-    - apt-get update && apt-get install -y postgresql-client
-    - echo "⏳ Waiting for PostgreSQL to be ready..."
-    - |
-      until (echo > /dev/tcp/postgres/5432) >/dev/null 2>&1; do
-        echo "Postgres not ready yet..."
-        sleep 2
-      done
-    - echo "✅ PostgreSQL is up and running."
-
-    # =========================
-    # 🔹 Vérifie le schéma course
-    # =========================
-    - echo "Test Liquibase — module course"
-
-    - liquibase --classpath=src/main/resources --changelog-file=db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"   --username="${POSTGRES_USER}"   --password="${POSTGRES_PASSWORD}"   update
-
-    # ✅ Rollback 1 version du schéma course
-    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}"  rollback-count 1
-
-    # =========================
-    # 🔹 Vérifie le schéma storage
-    # =========================
-    - echo "Test Liquibase — module storage"
-    # ⚠️ Même correction : `--changelog-file` en minuscules
-    # ⚠️ Supprimer la ligne "- |" vide (elle casse le script YAML)
-    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" update
-
-    # ✅ Rollback 1 version du schéma storage
-    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}" --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" rollback-count 1
-
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "master"'
-
-sonar_analysis:
-  stage: sonar
-  image: maven:3.9.9-eclipse-temurin-21
-  variables:
-    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
-    GIT_DEPTH: "0"
-  cache:
-    key: "${CI_JOB_NAME}"
-    paths:
-      - .sonar/cache
-  needs:
-    - job: unit_test
-      optional: true
-  script:
-    - echo "🚀 Analyse SonarCloud"
-    - mvn  verify sonar:sonar -Dsonar.projectKey=simplon_skillhub_e-learning-monolith-back -Dsonar.organization=simplon-skillhub  -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "master"'
-
+## Utilise l'image avec Java 21 et Maven 3.9.9
+#image: maven:3.9.9-eclipse-temurin-21
+#
+#variables:
+#  DOCKER_HOST: "unix:///var/run/docker.sock"  # Utilise Docker sans DIND
+#  POSTGRES_USER: root
+#  POSTGRES_PASSWORD: root
+#  POSTGRES_DB: liquibase_test
+#  MAVEN_CLI_OPTS: "-B -Dmaven.test.failure.ignore=false"
+#stages:
+#  - build
+#  - test
+#  - liquibase
+#  - sonar
+#
+#cache:
+#  key: "${CI_JOB_NAME}"
+#  paths:
+#    - .m2/repository
+#    - .sonar/cache
+#build:
+#  stage: build
+#  script:
+#    - echo "Build project"
+#    - mvn clean package -DskipTests  # Compile sans exécuter les tests
+#  artifacts:
+#    paths:
+#      - target/*.jar  # Sauvegarde le JAR pour les étapes suivantes
+#  rules:
+#    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+#    - if: '$CI_COMMIT_BRANCH == "develop"'
+#    - if: '$CI_COMMIT_BRANCH == "master"'
+#unit_test:
+#  stage: test
+#  script:
+#    - echo "➡️ Exécution des tests unitaires avec JaCoCo"
+#    - mvn clean verify -Psonar
+#  artifacts:
+#    paths:
+#      - target/site/jacoco/jacoco.xml
+#    expire_in: 1 week
+#  needs:
+#    - build
+#  rules:
+#    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+#    - if: '$CI_COMMIT_BRANCH == "develop"'
+#    - if: '$CI_COMMIT_BRANCH == "master"'
+#
+#
+#liquibase_test:
+#  stage: liquibase
+#  image: liquibase/liquibase:4.27
+#  services:
+#    - name: postgres:15
+#      alias: postgres
+#  variables:
+#    PGPASSWORD: $POSTGRES_PASSWORD
+#  script:
+#    - echo "🔧 Installing PostgreSQL client..."
+#    - apt-get update && apt-get install -y postgresql-client
+#    - echo "⏳ Waiting for PostgreSQL to be ready..."
+#    - |
+#      until (echo > /dev/tcp/postgres/5432) >/dev/null 2>&1; do
+#        echo "Postgres not ready yet..."
+#        sleep 2
+#      done
+#    - echo "✅ PostgreSQL is up and running."
+#
+#    # =========================
+#    # 🔹 Vérifie le schéma course
+#    # =========================
+#    - echo "Test Liquibase — module course"
+#
+#    - liquibase --classpath=src/main/resources --changelog-file=db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"   --username="${POSTGRES_USER}"   --password="${POSTGRES_PASSWORD}"   update
+#
+#    # ✅ Rollback 1 version du schéma course
+#    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/course/changelog-course-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}"  rollback-count 1
+#
+#    # =========================
+#    # 🔹 Vérifie le schéma storage
+#    # =========================
+#    - echo "Test Liquibase — module storage"
+#    # ⚠️ Même correction : `--changelog-file` en minuscules
+#    # ⚠️ Supprimer la ligne "- |" vide (elle casse le script YAML)
+#    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml  --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}"  --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" update
+#
+#    # ✅ Rollback 1 version du schéma storage
+#    - liquibase --classpath=src/main/resources --changelog-file=/db/changelog/storage/changelog-storage-master.yaml --url="jdbc:postgresql://postgres:5432/${POSTGRES_DB}" --username="${POSTGRES_USER}" --password="${POSTGRES_PASSWORD}" rollback-count 1
+#
+#  rules:
+#    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+#    - if: '$CI_COMMIT_BRANCH == "develop"'
+#    - if: '$CI_COMMIT_BRANCH == "master"'
+#
+#sonar_analysis:
+#  stage: sonar
+#  image: maven:3.9.9-eclipse-temurin-21
+#  variables:
+#    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+#    GIT_DEPTH: "0"
+#  cache:
+#    key: "${CI_JOB_NAME}"
+#    paths:
+#      - .sonar/cache
+#  needs:
+#    - job: unit_test
+#      optional: true
+#  script:
+#    - echo "🚀 Analyse SonarCloud"
+#    - mvn  verify sonar:sonar -Dsonar.projectKey=simplon_skillhub_e-learning-monolith-back -Dsonar.organization=simplon-skillhub  -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+#  rules:
+#    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+#    - if: '$CI_COMMIT_BRANCH == "develop"'
+#    - if: '$CI_COMMIT_BRANCH == "master"'
+#

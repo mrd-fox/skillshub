@@ -64,82 +64,112 @@ jobs:
           name: jacoco
           path: target/site/jacoco/jacoco.xml
 
+  # ========== LIQUIBASE ==========
+liquibase:
+  name: Liquibase Tests
+  runs-on: ubuntu-latest
+  needs: build     # ✔ Attendre la fin du build, comme dans GitLab CI
 
-  liquibase:
-    name: Liquibase Tests
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: root
-          POSTGRES_PASSWORD: root
-          POSTGRES_DB: liquibase_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U root"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=5
+  services:
+    postgres:
+      image: postgres:15
+      env:
+        POSTGRES_USER: root
+        POSTGRES_PASSWORD: root
+        POSTGRES_DB: liquibase_test
+      ports:
+        - 5432:5432
+      options: >-
+        --health-cmd="pg_isready -U root"
+        --health-interval=5s
+        --health-timeout=5s
+        --health-retries=5
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Install Liquibase
-        run: |
-          curl -sLo liquibase.zip https://github.com/liquibase/liquibase/releases/download/v4.27.0/liquibase-4.27.0.zip
-          unzip liquibase.zip -d liquibase
-          sudo mv liquibase /opt/liquibase
-          sudo ln -s /opt/liquibase/liquibase /usr/local/bin/liquibase
+    - name: Install Liquibase
+      run: |
+        curl -sLo liquibase.zip https://github.com/liquibase/liquibase/releases/download/v4.27.0/liquibase-4.27.0.zip
+        unzip liquibase.zip -d liquibase
+        sudo mv liquibase /opt/liquibase
+        sudo ln -s /opt/liquibase/liquibase /usr/local/bin/liquibase
 
-      - name: Wait for PostgreSQL
-        run: |
-          until pg_isready -h localhost -p 5432; do
-            echo "Postgres not ready..."
-            sleep 2
-          done
+    - name: Wait for PostgreSQL
+      run: |
+        until pg_isready -h localhost -p 5432; do
+          echo "PostgreSQL not ready yet..."
+          sleep 2
+        done
 
-      # ========== MODULE COURSE ==========
-      - name: Liquibase update (course)
-        run: liquibase \
-          --classpath=src/main/resources \
-          --changelog-file=db/changelog/course/changelog-course-master.yaml \
-          --url="jdbc:postgresql://localhost:5432/liquibase_test" \
-          --username="root" \
-          --password="root" \
-          update
+    # =============================
+    # 🔹 COURSE schema
+    # =============================
+    - name: Liquibase update (course)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/course/changelog-course-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        update
 
-      - name: Liquibase rollback (course)
-        run: liquibase \
-          --classpath=src/main/resources \
-          --changelog-file=db/changelog/course/changelog-course-master.yaml \
-          --url="jdbc:postgresql://localhost:5432/liquibase_test" \
-          --username="root" \
-          --password="root" \
-          rollback-count 1
+    - name: Liquibase rollback (course)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/course/changelog-course-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        rollback-count 1
 
-      # ========== MODULE STORAGE ==========
-      - name: Liquibase update (storage)
-        run: liquibase \
-          --classpath=src/main/resources \
-          --changelog-file=db/changelog/storage/changelog-storage-master.yaml \
-          --url="jdbc:postgresql://localhost:5432/liquibase_test" \
-          --username="root" \
-          --password="root" \
-          update
+    # =============================
+    # 🔹 STORAGE schema
+    # =============================
+    - name: Liquibase update (storage)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        update
 
-      - name: Liquibase rollback (storage)
-        run: liquibase \
-          --classpath=src/main/resources \
-          --changelog-file=db/changelog/storage/changelog-storage-master.yaml \
-          --url="jdbc:postgresql://localhost:5432/liquibase_test" \
-          --username="root" \
-          --password="root" \
-          rollback-count 1
+    - name: Liquibase rollback (storage)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        rollback-count 1
+    # =============================
+    # 🔹 USER schema  (manquant → ajouté ici)
+    # =============================
+    - name: Liquibase update (user)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/user/changelog-user-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        update
 
-
+    - name: Liquibase rollback (user)
+      run: >
+        liquibase
+        --classpath=src/main/resources
+        --changelog-file=db/changelog/user/changelog-user-master.yaml
+        --url="jdbc:postgresql://localhost:5432/liquibase_test"
+        --username="root"
+        --password="root"
+        rollback-count 1
   sonar:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
