@@ -25,7 +25,7 @@
         <snakyaml.version>2.3</snakyaml.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <archunit-junt5.version>1.4.0</archunit-junt5.version>
-        <sonar.organization>simplon-skillhub</sonar.organization>
+        <sonar.organization>mrd-fox</sonar.organization>
         <sonar.projectKey>e-learning</sonar.projectKey>
         <sonar.projectName>e-learning</sonar.projectName>
         <sonar.projectVersion>${project.version}</sonar.projectVersion>
