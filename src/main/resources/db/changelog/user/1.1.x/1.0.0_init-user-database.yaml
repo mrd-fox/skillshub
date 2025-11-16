@@ -1,0 +1,162 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-158_create-role-table
+      author: Marina DARDE
+      labels: user,role
+      context: user
+      changes:
+        - createTable:
+            tableName: role
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+      rollback:
+        - dropTable:
+            tableName: role
+            cascadeConstraints: true
+
+  - changeSet:
+      id: SH-158_create-user-account-table
+      author: Marina DARDE
+      labels: user,account
+      context: user
+      changes:
+        - createTable:
+            tableName: user_account
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  type: uuid
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: first_name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: address
+                  type: varchar(255)
+              - column:
+                  name: postal_code
+                  type: varchar(20)
+              - column:
+                  name: city
+                  type: varchar(100)
+              - column:
+                  name: country
+                  type: varchar(100)
+              - column:
+                  name: phone_number
+                  type: varchar(50)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+      rollback:
+        - dropTable:
+            tableName: user_account
+            cascadeConstraints: true
+
+  - changeSet:
+      id: SH-158_create-user-roles-table
+      author: Marina DARDE
+      labels: user,role
+      context: user
+      changes:
+        - createTable:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_roles
+            columnNames: user_id, role_id
+        - addForeignKeyConstraint:
+            baseTableName: user_roles
+            baseColumnNames: user_id
+            referencedTableName: user_account
+            referencedColumnNames: id
+            constraintName: fk_user_roles_user_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: user_roles
+            baseColumnNames: role_id
+            referencedTableName: role
+            referencedColumnNames: id
+            constraintName: fk_user_roles_role_id
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: user_roles
+            cascadeConstraints: true
+
+  - changeSet:
+      id: SH-158_insert-default-roles
+      author: Marina DARDE
+      labels: user,role,seed
+      context: user
+      changes:
+        - insert:
+            tableName: role
+            columns:
+              - column: { name: id, valueComputed: "gen_random_uuid()" }
+              - column: { name: name, value: "STUDENT" }
+        - insert:
+            tableName: role
+            columns:
+              - column: { name: id, valueComputed: "gen_random_uuid()" }
+              - column: { name: name, value: "TUTOR" }
+        - insert:
+            tableName: role
+            columns:
+              - column: { name: id, valueComputed: "gen_random_uuid()" }
+              - column: { name: name, value: "ADMIN" }
+      rollback:
+        - delete:
+            tableName: role
+            where: "name in ('STUDENT', 'TUTOR', 'ADMIN')"

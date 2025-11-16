@@ -25,7 +25,7 @@
         <snakyaml.version>2.3</snakyaml.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <archunit-junt5.version>1.4.0</archunit-junt5.version>
-        <sonar.organization>simplon-skillhub</sonar.organization>
+        <sonar.organization>mrd-fox</sonar.organization>
         <sonar.projectKey>e-learning</sonar.projectKey>
         <sonar.projectName>e-learning</sonar.projectName>
         <sonar.projectVersion>${project.version}</sonar.projectVersion>
@@ -236,6 +236,17 @@
             <artifactId>rabbitmq</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!--        <dependency>-->
         <!--            <groupId>io.github.cdimascio</groupId>-->
@@ -311,6 +322,9 @@
                 <version>3.0.0</version>
                 <configuration>
                     <argLine>${argLine}</argLine>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
@@ -407,7 +421,27 @@
                 </plugins>
             </build>
         </profile>
-
+        <!-- ✅ Profil pour skipper les tests d'intégration -->
+        <profile>
+            <id>skip-it</id>
+            <properties>
+                <maven.test.skip.ITs>true</maven.test.skip.ITs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/*IntegrationTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>

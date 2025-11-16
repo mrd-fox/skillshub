@@ -1,6 +1,7 @@
 volumes:
   postgres-course-data:
   postgres-storage-data:
+  postgres-user-data:
   minio-data:
   rabbitmq-data:
   prometheus-data:
@@ -50,6 +51,25 @@ services:
       - postgres-storage-data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U root -d storage_service" ]
+      interval: 3s
+      retries: 10
+    networks:
+      - skillshub-net
+
+  postgres-user:
+    restart: unless-stopped
+    image: postgres:15
+    container_name: postgres-user
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U root -d user_service" ]
       interval: 3s
       retries: 10
     networks:

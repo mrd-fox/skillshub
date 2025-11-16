@@ -5,8 +5,8 @@ ENVIRONMENT?=dev
 MICROSERVICE_NAME=skills-hub
 DEBUG_PORT=10020
 
-include envs/${ENVIRONMENT}.env
-export $(shell sed 's/=.*//' envs/$(ENVIRONMENT).env)
+#include envs/${ENVIRONMENT}.env
+#export $(shell sed 's/=.*//' envs/$(ENVIRONMENT).env)
 
 compile:
 	mvn clean test-compile
@@ -94,6 +94,35 @@ storage_migration_sync: compile
 
 storage_migration_clear: compile
 	mvn ${LIQUIBASE_STORAGE} liquibase:clearCheckSums
+
+
+# #######################################################################################
+# Liquibase commands for user_service (PostgreSQL)
+# #######################################################################################
+
+LIQUIBASE_USER = -Dliquibase.changeLogFile=db/changelog/user/changelog-user-master.yaml \
+				 -Dliquibase.url=jdbc:postgresql://127.0.0.1:5435/user_service \
+				 -Dliquibase.username=root \
+				 -Dliquibase.password=root \
+				 -Dliquibase.contexts=$(CONTEXT)
+
+# ▶️ Apply new migrations
+user_migration_up: compile
+	mvn ${LIQUIBASE_USER} liquibase:update
+
+# 🔙 Rollback last migration (1 changeset)
+user_migration_down: compile
+	mvn ${LIQUIBASE_USER} liquibase:rollback -Dliquibase.rollbackCount=1
+
+# 🧩 Mark current state as up-to-date
+user_migration_sync: compile
+	mvn ${LIQUIBASE_USER} liquibase:changelogSync
+
+# 🧹 Clear checksums
+user_migration_clear: compile
+	mvn ${LIQUIBASE_USER} liquibase:clearCheckSums
+
+
 
 # #######################################################################################
 # MinIO commands

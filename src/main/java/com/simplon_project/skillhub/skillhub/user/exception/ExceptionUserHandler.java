@@ -1,11 +1,15 @@
-package com.simplon_project.skillhub.skillhub.course.adapter.in.web.advice;
+package com.simplon_project.skillhub.skillhub.user.exception;
 
+
+import com.simplon_project.skillhub.skillhub.user.domain.exception.DomainException;
 import feign.FeignException;
 import org.springframework.boot.info.BuildProperties;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.zalando.problem.*;
@@ -17,12 +21,15 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 
+import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
+
 @ControllerAdvice
-public class ExceptionHandler implements ProblemHandling, AdviceTrait {
+@Order(HIGHEST_PRECEDENCE)
+public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
     private static final String SOURCE_KEY = "sources";
     private final BuildProperties buildProperties;
 
-    public ExceptionHandler(BuildProperties buildProperties) {
+    public ExceptionUserHandler(BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
@@ -105,4 +112,34 @@ public class ExceptionHandler implements ProblemHandling, AdviceTrait {
             handleThrowable(problembuilder, problem, Objects.requireNonNull(problem.getStatus()), problem.getType());
         }
     }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(DomainException.class)
+    public ResponseEntity<Problem> handleDomainException(
+            DomainException ex,
+            NativeWebRequest request) {
+
+        Problem problem = Problem.builder()
+                .withStatus(ex.getStatus())
+                .withTitle(ex.getStatus().getReasonPhrase())
+                .withDetail(ex.getMessage())
+                .with("errorCode", ex.getClass().getSimpleName())
+                .with("errorMessage", ex.getMessage())
+                .with("sources", buildProperties.getName())
+                .build();
+
+        return create(ex, problem, request);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Problem> handleIllegalArgument(IllegalArgumentException ex, NativeWebRequest request) {
+        System.out.println(">>> USER HANDLER ACTIVE <<<");
+        Problem problem = Problem.builder()
+                .withStatus(Status.BAD_REQUEST)
+                .withTitle("Bad Request")
+                .withDetail(ex.getMessage())
+                .build();
+
+        return create(ex, problem, request, new HttpHeaders());
+    }
+
 }

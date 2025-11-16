@@ -25,6 +25,10 @@ spring:
       url: ${SPRING_DATASOURCE_STORAGE_URL:jdbc:postgresql://localhost:5434/storage_service}
       username: ${SPRING_DATASOURCE_STORAGE_USERNAME:root}
       password: ${SPRING_DATASOURCE_STORAGE_PASSWORD:root}
+    user:
+      url: ${SPRING_DATASOURCE_USER_URL:jdbc:postgresql://localhost:5435/user_service}
+      username: ${SPRING_DATASOURCE_USER_USERNAME:root}
+      password: ${SPRING_DATASOURCE_USER_PASSWORD:root}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
