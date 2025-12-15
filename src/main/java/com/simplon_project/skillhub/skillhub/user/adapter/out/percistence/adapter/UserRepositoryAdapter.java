@@ -43,16 +43,19 @@ public class UserRepositoryAdapter implements LoadUserPort {
     @Override
     public User loadUserById(Id userId) {
         UserEntity found = userRepository.findById(EntityId.of(userId.asUUID()))
-                .orElseThrow(() -> new UserNotFoundException(userId.asString()));
+                .orElseThrow(() -> new UserNotFoundException("User not found with id:", userId.asString()));
         return UserEntityMapper.mapToDomain(found);
     }
+
 
 
     /**
      * Find user by external UUID (Keycloak ID).
      */
-    public Optional<UserEntity> findByExternalId(UUID externalId) {
-        return userRepository.findByExternalId(externalId);
+    public User findByExternalId(UUID externalId) {
+        UserEntity found = userRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with external id:", externalId.toString()));
+        return UserEntityMapper.mapToDomain(found);
     }
 
     /**

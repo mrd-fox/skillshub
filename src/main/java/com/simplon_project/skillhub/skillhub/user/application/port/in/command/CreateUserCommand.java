@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 
 public record CreateUserCommand(
         @NotBlank String externalId,
-        @NotBlank String firstName,
-        @NotBlank String lastName,
+         String firstName,
+         String lastName,
         @Email @NotBlank String email,
         String address,
         String city,
@@ -47,8 +47,8 @@ public record CreateUserCommand(
             throw new IllegalArgumentException("Missing externalId header");
         if (email == null || email.isBlank())
             throw new IllegalArgumentException("Missing email header");
-        if (firstName == null || lastName == null)
-            throw new IllegalArgumentException("Missing name headers");
+//        if (firstName == null || lastName == null)
+//            throw new IllegalArgumentException("Missing name headers");
     }
 
     private Set<RolesEnum> mapRoles() {

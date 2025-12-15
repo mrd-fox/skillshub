@@ -27,12 +27,15 @@ import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 @Order(HIGHEST_PRECEDENCE)
 public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
     private static final String SOURCE_KEY = "sources";
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private static final String ERROR_CODE = "errorCode";
     private final BuildProperties buildProperties;
 
     public ExceptionUserHandler(BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
+    @Override
     public ProblemBuilder prepare(Throwable throwable, StatusType status, URI type) {
         var problemBuilder = Problem.builder();
         handleThrowable(problemBuilder, throwable, status, type);
@@ -74,12 +77,12 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
 
     private void addErrorMessage(Throwable throwable, Problem problem, ProblemBuilder problemBuilder) {
         if (throwable instanceof HandlerMethodValidationException handlerMethodValidationException) {
-            problemBuilder.with("errorCode", "CONSTRAINT_VIOLATION")
-                    .with("errorMessage", handlerMethodValidationException.getDetailMessageArguments());
+            problemBuilder.with(ERROR_CODE, "CONSTRAINT_VIOLATION")
+                    .with(ERROR_MESSAGE, handlerMethodValidationException.getDetailMessageArguments());
 
         } else {
-            problemBuilder.with("errorCode", problem.getTitle())
-                    .with("errorMessage", problem.getDetail());
+            problemBuilder.with(ERROR_CODE, problem.getTitle())
+                    .with(ERROR_MESSAGE, problem.getDetail());
         }
     }
 
@@ -122,9 +125,9 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
                 .withStatus(ex.getStatus())
                 .withTitle(ex.getStatus().getReasonPhrase())
                 .withDetail(ex.getMessage())
-                .with("errorCode", ex.getClass().getSimpleName())
-                .with("errorMessage", ex.getMessage())
-                .with("sources", buildProperties.getName())
+                .with(ERROR_CODE, ex.getClass().getSimpleName())
+                .with(ERROR_MESSAGE, ex.getMessage())
+                .with(SOURCE_KEY, buildProperties.getName())
                 .build();
 
         return create(ex, problem, request);
@@ -132,7 +135,6 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Problem> handleIllegalArgument(IllegalArgumentException ex, NativeWebRequest request) {
-        System.out.println(">>> USER HANDLER ACTIVE <<<");
         Problem problem = Problem.builder()
                 .withStatus(Status.BAD_REQUEST)
                 .withTitle("Bad Request")
