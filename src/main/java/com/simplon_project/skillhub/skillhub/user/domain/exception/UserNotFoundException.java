@@ -4,7 +4,7 @@ import org.zalando.problem.Status;
 
 public class UserNotFoundException extends DomainException {
 
-    public UserNotFoundException(String userId) {
-        super("User not found with id: " + userId, Status.NOT_FOUND);
+    public UserNotFoundException(String userId, String message) {
+        super(message + " " + userId, Status.NOT_FOUND);
     }
 }

@@ -4,7 +4,9 @@ import com.simplon_project.skillhub.skillhub.user.adapter.common.UserHelper;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.mapper.UserResponseMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.response.UserResponse;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.CreateUserPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByExternalIdPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByIdPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,6 +29,7 @@ public class UserController {
 
     private final CreateUserPort createUserPort;
     private final GetUserByIdPort getUserByIdPort;
+    private final GetUserByExternalIdPort getUserByExternalIdPort;
 
     @Operation(
             summary = "Create a new user",
@@ -36,8 +39,8 @@ public class UserController {
                     """,
             parameters = {
                     @Parameter(name = "X-User-Id", in = ParameterIn.HEADER, required = true, description = "External Keycloak user ID (UUID)", example = "9a5a94e5-04b2-47b8-9ef2-4426d1b640b2"),
-                    @Parameter(name = "X-User-FirstName", in = ParameterIn.HEADER, required = true, description = "User's first name", example = "Marina"),
-                    @Parameter(name = "X-User-LastName", in = ParameterIn.HEADER, required = true, description = "User's last name", example = "Darde"),
+                    @Parameter(name = "X-User-FirstName", in = ParameterIn.HEADER,  description = "User's first name", example = "Marina"),
+                    @Parameter(name = "X-User-LastName", in = ParameterIn.HEADER,  description = "User's last name", example = "Darde"),
                     @Parameter(name = "X-User-Email", in = ParameterIn.HEADER, required = true, description = "User email address", example = "marina.darde@3wa.io"),
                     @Parameter(name = "X-User-Address", in = ParameterIn.HEADER, description = "User address", example = "12 rue des Lilas"),
                     @Parameter(name = "X-User-City", in = ParameterIn.HEADER, description = "City", example = "Paris"),
@@ -95,6 +98,45 @@ public class UserController {
     public ResponseEntity<UserResponse> getById(@PathVariable String id) {
         var command = new GetUserByIdCommand(id);
         var user = getUserByIdPort.getUserById(command);
+        var response = UserResponseMapper.mapToResponse(user);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/external/{externalId}")
+    @Operation(
+            summary = "Get user by external ID",
+            description = """
+                Retrieves a user from the internal User Service database using the external ID (Keycloak subject).
+                This endpoint does NOT query IAM.
+                """,
+            parameters = {
+                    @Parameter(
+                            name = "externalId",
+                            description = "External ID (UUID format, Keycloak sub)",
+                            example = "9a5a94e5-04b2-47b8-9ef2-4426d1b640b2",
+                            required = true
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "User successfully retrieved",
+                            content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid externalId format"
+                    )
+            }
+    )
+    public ResponseEntity<UserResponse> getByExternalId(@PathVariable String externalId) {
+        var command = new GetUserByExternalIdCommand(externalId);
+        var user = getUserByExternalIdPort.getUserByExternalId(command);
         var response = UserResponseMapper.mapToResponse(user);
         return ResponseEntity.ok(response);
     }
