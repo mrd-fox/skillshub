@@ -2,12 +2,15 @@ package com.simplon_project.skillhub.skillhub.user.adapter.in.web;
 
 import com.simplon_project.skillhub.skillhub.user.adapter.common.UserHelper;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.mapper.UserResponseMapper;
+import com.simplon_project.skillhub.skillhub.user.adapter.in.web.request.UpdateUserRequest;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.response.UserResponse;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.CreateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByExternalIdPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByIdPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.UpdateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
+import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -18,6 +21,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +34,7 @@ public class UserController {
     private final CreateUserPort createUserPort;
     private final GetUserByIdPort getUserByIdPort;
     private final GetUserByExternalIdPort getUserByExternalIdPort;
+    private final UpdateUserPort updateUserPort;
 
     @Operation(
             summary = "Create a new user",
@@ -139,5 +144,27 @@ public class UserController {
         var user = getUserByExternalIdPort.getUserByExternalId(command);
         var response = UserResponseMapper.mapToResponse(user);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Update a user",
+            description = "Updates only the provided fields. Roles are additive only (TUTOR allowed)."
+    )
+    @ApiResponse(responseCode = "200", description = "User updated")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    @PutMapping(
+            value = "/external/{externalId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public UserResponse updateUser(
+            @Parameter(description = "Keycloak external user id (UUID)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            @PathVariable String externalId,
+            @RequestBody UpdateUserRequest request
+    ) {
+        var command = request.toUpdateUserCommand(externalId);
+        var updated = updateUserPort.update(command);
+        return UserResponseMapper.mapToResponse(updated);
     }
 }

@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.user.domain.model;
 import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
 import com.simplon_project.skillhub.skillhub.user.domain.exception.InvalidUserStateException;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,7 @@ import java.util.UUID;
 
 @Getter
 @SuperBuilder(toBuilder = true)
-
+@Setter
 public class User extends Base {
 
     // --- Identification ---
