@@ -5,16 +5,24 @@ import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper
 import com.simplon_project.skillhub.skillhub.user.application.port.in.CreateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByExternalIdPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByIdPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.UpdateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.CreateUserCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.command.UpdateUserCommand;
+import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
-public class UserUseCases implements CreateUserPort, GetUserByIdPort , GetUserByExternalIdPort {
+@Transactional(transactionManager = "userTxManager")
+public class UserUseCases implements CreateUserPort, GetUserByIdPort , GetUserByExternalIdPort, UpdateUserPort {
     private final UserRepositoryAdapter userRepositoryAdapter;
 
     @Override
@@ -25,6 +33,7 @@ public class UserUseCases implements CreateUserPort, GetUserByIdPort , GetUserBy
     }
 
     @Override
+    @Transactional(readOnly = true)
     public User getUserById(GetUserByIdCommand command) {
         return userRepositoryAdapter.loadUserById(command.toDomainId());
     }
@@ -32,5 +41,54 @@ public class UserUseCases implements CreateUserPort, GetUserByIdPort , GetUserBy
     @Override
     public User getUserByExternalId(GetUserByExternalIdCommand command) {
         return userRepositoryAdapter.findByExternalId(command.toExternalId());
+    }
+
+    @Override
+    public User update(UpdateUserCommand command) {
+
+        UUID externalId = UUID.fromString(command.externalId());
+        User existing = userRepositoryAdapter.findByExternalId(externalId);
+        // Apply PATCH-like fields (command already normalized: null means "not provided")
+        buildExisting(command, existing);
+        var saved = userRepositoryAdapter.save(existing);
+        return UserEntityMapper.mapToDomain(saved);
+    }
+
+    private static void buildExisting(UpdateUserCommand command, User existing) {
+        if (command.firstName() != null) {
+            existing.setFirstName(command.firstName());
+        }
+
+        if (command.lastName() != null) {
+            existing.setLastName(command.lastName());
+        }
+
+        if (command.address() != null) {
+            existing.setAddress(command.address());
+        }
+
+        if (command.postalCode() != null) {
+            existing.setPostalCode(command.postalCode());
+        }
+
+        if (command.city() != null) {
+            existing.setCity(command.city());
+        }
+
+        if (command.country() != null) {
+            existing.setCountry(command.country());
+        }
+
+        if (command.phoneNumber() != null) {
+            existing.setPhoneNumber(command.phoneNumber());
+        }
+
+        // Roles add-only (command already validated: only "TUTOR" allowed)
+        if (command.rolesToAdd() != null && !command.rolesToAdd().isEmpty()) {
+            if (existing.getRoles() == null) {
+                existing.setRoles(new HashSet<>());
+            }
+            existing.getRoles().add(RolesEnum.TUTOR);
+        }
     }
 }
