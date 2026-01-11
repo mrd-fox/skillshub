@@ -18,8 +18,11 @@ public class VideoEntity extends AbstractBaseEntity {
     @EmbeddedId
     private EntityId videoId;
 
-    @Column(name = "storage_key", nullable = false, unique = true)
-    private String storageKey;
+//    @Column(name = "storage_key", nullable = false, unique = true)
+//    private String storageKey;
+
+    @Column(name = "source_uri", nullable = false, unique = true, length = 512)
+    private String sourceUri;
 
     @Column(name = "format")
     private String format;
@@ -39,6 +42,12 @@ public class VideoEntity extends AbstractBaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private VideoStatusEnum status;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
+    @Column(name = "error_message")
+    private String errorMessage;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "chapter_id", nullable = false, unique = true,
