@@ -1,9 +1,9 @@
 package com.simplon_project.skillhub.skillhub.course.domain.enums;
 
 public enum VideoStatusEnum {
-    UPLOADED,
-    PROCESSING,
+    UPLOADED, //optional
+    PROCESSING, //after upload finished
     READY,
     FAILED,
-    PENDING,
+    PENDING, //after init
 }

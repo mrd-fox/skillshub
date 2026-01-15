@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public record ChapterResponse(
         String id,
         String title,
+        Integer position,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         VideoResponse video

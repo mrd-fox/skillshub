@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
@@ -12,8 +13,11 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 
 @Component
@@ -66,5 +70,15 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
                 .findFirst().orElse(null);
 
         return existingCourse != null ? CourseEntityMapper.mapToDomain(existingCourse, new CycleAvoidingMappingContext()) : null;
+    }
+
+    @Override
+    public List<Course> findByExternalUserId(String externalUserId) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+
+        List<CourseEntity> entities =
+                courseJpaRepository.findByExternalUserId(externalUserId, sort);
+
+        return CourseEntityMapper.mapToDomain(entities, new CycleAvoidingMappingContext());
     }
 }

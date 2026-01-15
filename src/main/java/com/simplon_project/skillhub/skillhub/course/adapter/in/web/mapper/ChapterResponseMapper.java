@@ -11,6 +11,7 @@ public final class ChapterResponseMapper {
         return ChapterResponse.builder()
                 .id(chapter.getId().asString())
                 .title(chapter.getTitle())
+                .position(chapter.getPosition())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())
                 .video(chapter.getVideo() != null ? VideoResponseMapper.mapToVideoResponse(chapter.getVideo()) : null)

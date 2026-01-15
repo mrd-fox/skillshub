@@ -23,6 +23,7 @@ public class SectionEntityMapper {
         var domain = Section.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())
+                .position(entity.getPosition())
                 .build();
 
         context.storeMappedInstance(entity, domain);
@@ -46,6 +47,7 @@ public class SectionEntityMapper {
         var entity = SectionEntity.builder()
                 .sectionId(EntityId.of(UUID.fromString(domain.getId().asString())))
                 .title(domain.getTitle())
+                .position(domain.getPosition())
                 .build();
 
         context.storeMappedInstance(domain, entity);

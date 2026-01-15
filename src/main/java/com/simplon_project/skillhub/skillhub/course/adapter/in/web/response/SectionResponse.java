@@ -9,6 +9,7 @@ import java.util.List;
 public record SectionResponse(
         String id,
         String title,
+        Integer position,
         List<ChapterResponse> chapters,
         LocalDateTime createdAt,
         LocalDateTime updatedAt

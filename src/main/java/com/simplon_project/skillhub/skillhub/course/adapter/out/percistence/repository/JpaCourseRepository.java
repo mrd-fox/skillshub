@@ -2,11 +2,13 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.rep
 
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,4 +26,6 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 where c.courseId = :id
             """)
     Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
+
+    List<CourseEntity> findByExternalUserId(String externalUserId, Sort sort);
 }

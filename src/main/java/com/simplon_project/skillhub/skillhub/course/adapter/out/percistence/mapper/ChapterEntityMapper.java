@@ -20,7 +20,6 @@ public class ChapterEntityMapper {
         var existing = context.getMappedInstance(entity, Chapter.class);
         if (existing != null) return existing;
 
-        var zone = ZoneId.systemDefault();
         var domain = Chapter.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())

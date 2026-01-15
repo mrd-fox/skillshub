@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
 import java.util.List;
+import java.util.Set;
 
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
@@ -24,8 +25,10 @@ public record CreateCourseRequest(
         List<CreateSectionRequest> sections
 ) {
 
-    public CreateCourseCommand toCourseCommand() {
+    public CreateCourseCommand toCourseCommand(String externalAuthorId, String roles) {
         return new CreateCourseCommand(
+                externalAuthorId,
+                roles,
                 title,
                 description,
                 price,

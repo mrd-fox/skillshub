@@ -22,7 +22,7 @@ services:
     container_name: postgres-course
     environment:
       POSTGRES_DB: course_service
-      #todo modify credentials
+      #TODO modify credentials
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:

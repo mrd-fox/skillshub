@@ -8,6 +8,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.enti
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
+import java.util.List;
 import java.util.UUID;
 
 
@@ -24,6 +25,7 @@ public class CourseEntityMapper {
                 .description(entity.getDescription())
                 .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
+                .externalUserId(entity.getExternalUserId())
                 .build();
         context.storeMappedInstance(entity, domain);
 
@@ -42,6 +44,7 @@ public class CourseEntityMapper {
                 .description(domain.getDescription())
                 .price(domain.getPrice())
                 .status(domain.getStatus())
+                .externalUserId(domain.getExternalUserId())
                 .build();
 
         context.storeMappedInstance(domain, entity);
@@ -54,5 +57,18 @@ public class CourseEntityMapper {
         entity.setSections(sectionEntities);
 
         return entity;
+    }
+
+    public static List<Course> mapToDomain(
+            List<CourseEntity> entities,
+            CycleAvoidingMappingContext context
+    ) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+
+        return entities.stream()
+                .map(entity -> mapToDomain(entity, context))
+                .toList();
     }
 }

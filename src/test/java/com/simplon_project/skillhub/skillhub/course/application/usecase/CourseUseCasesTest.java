@@ -89,6 +89,8 @@ public class CourseUseCasesTest {
         void createCourseDraftWithDuplicateTitle_shouldThrowException() {
             var courseCommand = CreateCourseCommand.builder()
                     .title(COURSE_TITLE)
+                    .externalAuthorId("1234")
+                    .rawRoles("TUTOR, STUDENT")
                     .build();
 
 

@@ -9,6 +9,7 @@ import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CourseResponseMapper {
+
     public static CourseResponse mapToCourseResponse(Course course) {
         return CourseResponse.builder()
                 .id(course.getId().asString())
@@ -19,6 +20,16 @@ public final class CourseResponseMapper {
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();
+    }
+
+    public static List<CourseResponse> mapToCourseResponses(List<Course> courses) {
+        if (courses == null || courses.isEmpty()) {
+            return List.of();
+        }
+
+        return courses.stream()
+                .map(CourseResponseMapper::mapToCourseResponse)
+                .toList();
     }
 
 }
