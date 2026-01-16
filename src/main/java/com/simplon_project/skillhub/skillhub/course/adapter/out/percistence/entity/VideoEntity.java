@@ -12,15 +12,17 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @Getter
 @Setter
-@Builder
 @EqualsAndHashCode(callSuper = true)
 public class VideoEntity extends AbstractBaseEntity {
+
     @EmbeddedId
     private EntityId videoId;
 
-//    @Column(name = "storage_key", nullable = false, unique = true)
-//    private String storageKey;
+    // Legacy MinIO/S3 storage key (optional). Keep nullable to support Vimeo-only flows.
+    @Column(name = "storage_key")
+    private String storageKey;
 
+    // Canonical provider-agnostic URI (required, unique).
     @Column(name = "source_uri", nullable = false, unique = true, length = 512)
     private String sourceUri;
 
@@ -28,7 +30,7 @@ public class VideoEntity extends AbstractBaseEntity {
     private String format;
 
     @Column(name = "size")
-    private Long size; // en octets
+    private Long size;
 
     @Column(name = "width")
     private Integer width;
@@ -40,18 +42,25 @@ public class VideoEntity extends AbstractBaseEntity {
     private Long duration;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", nullable = false)
     private VideoStatusEnum status;
 
-    @Column(name = "thumbnail_url")
+    @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @Column(name = "error_message")
+    @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "chapter_id", nullable = false, unique = true,
-            foreignKey = @ForeignKey(name = "fk__video_chapter__id"))
+    /**
+     * A chapter can have 0..1 video. Video is associated after init/upload flow.
+     * Keep nullable=true to allow PENDING rows before linkage.
+     */
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(
+            name = "chapter_id",
+            unique = true,
+            foreignKey = @ForeignKey(name = "fk__video_chapter__id")
+    )
     private ChapterEntity chapter;
 
     @Override

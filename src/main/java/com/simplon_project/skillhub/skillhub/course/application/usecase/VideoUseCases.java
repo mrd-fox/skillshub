@@ -1,14 +1,16 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.messaging.events.VideoMetadataExtractedEvent;
-import com.simplon_project.skillhub.skillhub.course.adapter.messaging.events.VideoUploadedEvent;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.ProcessExtractedMetadataPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.ProcessUploadVideoPort;
+import com.simplon_project.skillhub.skillhub.course.application.dto.UploadInstructions;
+import com.simplon_project.skillhub.skillhub.course.application.dto.VideoUploadInit;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitProviderUploadCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitVideoCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.ChapterRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoProviderInitPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,50 +18,88 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class VideoUseCases implements ProcessUploadVideoPort, ProcessExtractedMetadataPort {
+public class VideoUseCases implements InitVideoInChapterPort {
 
-    private final ChapterRepository chapterRepository;
-    private final VideoRepository videoRepository;
+    public static final String PROVIDER_NAME = "VIMEO";
+    public static final String DESCRIPTION = "";
+    public static final String PRIVACY = "private";
+    public static final String DEFAULT_TITLE = "";
+    private final ChapterRepository chapterRepository; // your port (currently returns entities)
+    private final VideoRepository videoRepository;     // your port (currently returns entities)
+    private final VideoProviderInitPort videoProviderInitPort;
 
     @Override
-    public void processUploadedVideo(VideoUploadedEvent event) {
+    public VideoUploadInit init(InitVideoCommand command) {
 
-        var courseId = EntityId.fromString(event.courseId());
-        var chapterId = EntityId.fromString(event.chapterId());
-        var videoId = EntityId.fromString(event.videoId());
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
+
+        var courseId = EntityId.fromString(command.courseId());
+        var chapterId = EntityId.fromString(command.chapterId());
 
         var chapter = chapterRepository.findByIdWithSectionAndCourse(chapterId)
-                .orElseThrow(() -> new IllegalStateException("Chapter not found"));
+                .orElseThrow(() -> new IllegalStateException("Chapter not found: " + command.chapterId()));
 
-        if (!chapter.getSection().getCourse().getId().equals(courseId)) {
+        var fetchedCourseId = extractCourseIdFromDomain(chapter);
+
+        if (!courseId.equals(fetchedCourseId)) {
             throw new IllegalStateException(
-                    "Chapter %s does not belong to course %s".formatted(chapterId, courseId)
+                    "Chapter %s does not belong to course %s".formatted(command.chapterId(), command.courseId())
             );
         }
-        var video = VideoEntity.builder()
-                .videoId(videoId)
-                .storageKey(event.storageKey())
-                .format(event.format())
-                .size(event.sizeBytes())
-                .status(VideoStatusEnum.UPLOADED)
-                .chapter(chapter)
-                .build();
-        videoRepository.save(video);
+
+        if (chapter.getVideo() != null) {
+            throw new IllegalStateException("Chapter already has a video. Replace flow is not implemented yet.");
+        }
+
+        var title = normalizeNullable(chapter.getTitle());
+        if (title == null) {
+            title = DEFAULT_TITLE;
+        }
+
+        var providerCommand = new InitProviderUploadCommand(
+                command.sizeBytes(),
+                title,
+                DESCRIPTION,
+                PRIVACY
+        );
+
+        var providerResult = videoProviderInitPort.initTusUpload(providerCommand);
+
+        var savedVideo = videoRepository.createPendingVideo(
+                chapterId,
+                providerResult.sourceUri(),
+                VideoStatusEnum.PENDING
+        );
+
+        return new VideoUploadInit(
+                savedVideo,
+                new UploadInstructions(
+                        PROVIDER_NAME,
+                        providerResult.uploadUrl(),
+                        providerResult.expiresAt()
+                )
+        );
     }
 
-    @Override
-    public void processVideoMetadata(VideoMetadataExtractedEvent event) {
+    private static EntityId extractCourseIdFromDomain(Chapter chapter) {
+        if (chapter.getSection() == null
+                || chapter.getSection().getCourse() == null
+                || chapter.getSection().getCourse().getId() == null) {
+            throw new IllegalStateException("Chapter is missing section/course relation (data integrity issue)");
+        }
+        return EntityId.fromString(chapter.getSection().getCourse().getId().asString());
+    }
 
-        var videoId = EntityId.fromString(event.videoId());
-
-        var video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalStateException("Video not found: " + videoId));
-
-        video.setWidth(event.width());
-        video.setHeight(event.height());
-        video.setDuration(event.duration());
-        video.setStatus(VideoStatusEnum.valueOf(event.status()));
-
-        videoRepository.save(video);
+    private static String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed;
     }
 }

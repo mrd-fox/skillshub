@@ -99,7 +99,13 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin123}
   bucket: ${MINIO_BUCKET:storage}
-
+############################################################
+# 📦 Vimeo
+############################################################
+vimeo:
+  access-token: ${VIMEO_ACCESS_TOKEN}
+  accept: application/vnd.vimeo.*+json;version=3.4
+  base-url: https://api.vimeo.com
 
 ############################################################
 # 📜 LOGGING CONFIGURATION

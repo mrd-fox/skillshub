@@ -14,6 +14,7 @@ public interface JpaChapterRepository extends JpaRepository<ChapterEntity, Entit
                 FROM ChapterEntity c
                 JOIN FETCH c.section s
                 JOIN FETCH s.course cr
+                LEFT JOIN FETCH c.video            
                 WHERE c.chapterId = :chapterId
             """)
     Optional<ChapterEntity> findByIdWithSectionAndCourse(@Param("chapterId") EntityId chapterId);
