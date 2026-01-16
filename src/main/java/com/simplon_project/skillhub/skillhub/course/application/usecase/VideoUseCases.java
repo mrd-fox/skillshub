@@ -14,6 +14,9 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 
 @Slf4j
 @Service
@@ -22,13 +25,15 @@ public class VideoUseCases implements InitVideoInChapterPort {
 
     public static final String PROVIDER_NAME = "VIMEO";
     public static final String DESCRIPTION = "";
-    public static final String PRIVACY = "private";
+    public static final String PRIVACY = "unlisted";
     public static final String DEFAULT_TITLE = "";
     private final ChapterRepository chapterRepository; // your port (currently returns entities)
     private final VideoRepository videoRepository;     // your port (currently returns entities)
     private final VideoProviderInitPort videoProviderInitPort;
 
+
     @Override
+    @Transactional("courseTxManager")
     public VideoUploadInit init(InitVideoCommand command) {
 
         if (command == null) {
@@ -73,12 +78,17 @@ public class VideoUseCases implements InitVideoInChapterPort {
                 VideoStatusEnum.PENDING
         );
 
+        var expiresAt = providerResult.expiresAt();
+        if (expiresAt == null) {
+            expiresAt = Instant.now().plus(java.time.Duration.ofHours(1));
+        }
+
         return new VideoUploadInit(
                 savedVideo,
                 new UploadInstructions(
                         PROVIDER_NAME,
                         providerResult.uploadUrl(),
-                        providerResult.expiresAt()
+                        expiresAt
                 )
         );
     }

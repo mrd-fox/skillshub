@@ -10,17 +10,26 @@ import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoRe
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
 @Component
-@RequiredArgsConstructor
+@Transactional("courseTxManager")
 public class VideoRepositoryAdapter implements VideoRepository {
 
     private final JpaVideoRepository jpaRepository;
+
     private final EntityManager entityManager;
+
+    public VideoRepositoryAdapter(
+            JpaVideoRepository jpaRepository,
+            @Qualifier("courseEntityManager") EntityManager entityManager) {
+        this.jpaRepository = jpaRepository;
+        this.entityManager = entityManager;
+    }
 
     @Override
     public Optional<VideoEntity> findById(EntityId videoId) {

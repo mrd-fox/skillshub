@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/course/courses/{courseId}/sections/{sectionId}/chapters/{chapterId}/video")
+@RequestMapping("/api/course/{courseId}/sections/{sectionId}/chapters/{chapterId}/video")
 public class CourseSectionChapterController {
 
     private final InitVideoInChapterPort initVideoInChapterPort;

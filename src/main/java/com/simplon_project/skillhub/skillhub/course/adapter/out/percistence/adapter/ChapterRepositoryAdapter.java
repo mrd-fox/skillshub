@@ -27,7 +27,7 @@ public class ChapterRepositoryAdapter implements ChapterRepository {
     @Override
     public Optional<Chapter> findByIdWithSectionAndCourse(EntityId chapterId) {
         return jpaRepository.findByIdWithSectionAndCourse(chapterId).map(
-                entity -> ChapterEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext())
+                entity -> ChapterEntityMapper.mapToDomainWithSectionAndCourseLight(entity, new CycleAvoidingMappingContext())
         );
     }
 

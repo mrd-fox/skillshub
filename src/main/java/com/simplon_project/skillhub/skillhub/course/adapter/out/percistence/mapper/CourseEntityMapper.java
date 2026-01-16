@@ -71,4 +71,32 @@ public class CourseEntityMapper {
                 .map(entity -> mapToDomain(entity, context))
                 .toList();
     }
+
+     /* ============================================================
+       LIGHT MAPPING – FOR INIT VIDEO / READ-ONLY USE CASES
+       ============================================================ */
+
+    /**
+     * Lightweight mapping:
+     * - maps only identity + minimal fields
+     * - DOES NOT map sections
+     * - safe for init-video ownership validation
+     */
+    public static Course mapToDomainLight(CourseEntity entity, CycleAvoidingMappingContext context) {
+        if (entity == null) return null;
+
+        var existing = context.getMappedInstance(entity, Course.class);
+        if (existing != null) return existing;
+
+        var domain = Course.builder()
+                .id(Id.of(entity.getId().toString()))
+                .status(entity.getStatus())
+                .title(entity.getTitle())
+                .externalUserId(entity.getExternalUserId())
+                .build();
+
+        context.storeMappedInstance(entity, domain);
+
+        return domain;
+    }
 }
