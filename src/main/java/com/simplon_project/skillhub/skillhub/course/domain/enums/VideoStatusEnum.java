@@ -6,4 +6,5 @@ public enum VideoStatusEnum {
     READY,
     FAILED,
     PENDING, //after init
+    EXPIRED
 }

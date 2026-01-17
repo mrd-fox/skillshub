@@ -2,8 +2,8 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;

@@ -2,7 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.external.vimeo;
 
 import com.simplon_project.skillhub.skillhub.course.application.dto.VideoUploadInitResult;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitProviderUploadCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoProviderInitPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

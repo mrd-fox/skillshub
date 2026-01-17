@@ -6,8 +6,12 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.enti
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.VideoInfoEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaVideoRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.chapter.CheckVideoExistsForChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.CreatePendingVideoForChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoInfoByIdPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,7 +22,11 @@ import java.util.Optional;
 
 @Component
 @Transactional("courseTxManager")
-public class VideoRepositoryAdapter implements VideoRepository {
+public class VideoRepositoryAdapter implements
+        CreatePendingVideoForChapterPort,
+        LoadVideoInfoByIdPort,
+        CheckVideoExistsForChapterPort,
+        SaveVideoInfoPort {
 
     private final JpaVideoRepository jpaRepository;
 
@@ -32,25 +40,34 @@ public class VideoRepositoryAdapter implements VideoRepository {
     }
 
     @Override
-    public Optional<VideoEntity> findById(EntityId videoId) {
+    public Optional<VideoEntity> loadVideoInfoById(EntityId videoId) {
+
         return jpaRepository.findById(videoId);
     }
 
     @Override
-    public boolean existsByChapterId(EntityId chapterId) {
+    public boolean checkVideoExistsForChapter(EntityId chapterId) {
+
         return jpaRepository.existsByChapterId(chapterId);
     }
 
     @Override
-    public VideoInfo createPendingVideo(EntityId chapterId, String sourceUri, VideoStatusEnum status) {
-        var chapterRef = entityManager.getReference(ChapterEntity.class, chapterId);
+    public VideoInfo createPendingVideo(Id chapterId, String sourceUri) {
+        if (chapterId == null) {
+            throw new IllegalArgumentException("chapterId must not be null");
+        }
+        if (sourceUri == null || sourceUri.isBlank()) {
+            throw new IllegalArgumentException("sourceUri must not be blank");
+        }
+        EntityId chapterEntityId = EntityId.of(chapterId.asUUID());
+        var chapterRef = entityManager.getReference(ChapterEntity.class, chapterEntityId);
 
         var videoEntity = VideoEntity.builder()
                 .videoId(EntityId.random())
                 .sourceUri(sourceUri)
                 .thumbnailUrl(null)
                 .errorMessage(null)
-                .status(status)
+                .status(VideoStatusEnum.PENDING)
                 .build();
 
         // Attach FK -> chapter
@@ -62,5 +79,39 @@ public class VideoRepositoryAdapter implements VideoRepository {
         return VideoInfoEntityMapper.mapToDomain(saved, new CycleAvoidingMappingContext());
 
 
+    }
+
+    @Override
+    public VideoInfo save(VideoInfo videoInfo) {
+        if (videoInfo == null) {
+            throw new IllegalArgumentException("videoInfo must not be null");
+        }
+        if (videoInfo.id() == null) {
+            throw new IllegalArgumentException("videoInfo.id must not be null");
+        }
+        if (videoInfo.status() == null) {
+            throw new IllegalArgumentException("videoInfo.status must not be null");
+        }
+
+        var videoEntityId = EntityId.of(videoInfo.id().asUUID());
+
+        var entity = jpaRepository.findById(videoEntityId)
+                .orElseThrow(() -> new IllegalStateException("Video not found: " + videoInfo.id().asString()));
+
+        // Persisted fields
+        entity.setStorageKey(videoInfo.key()); // VideoInfo.key maps to VideoEntity.storageKey
+        entity.setSourceUri(videoInfo.sourceUri());
+        entity.setFormat(videoInfo.format());
+        entity.setSize(videoInfo.size());
+        entity.setWidth(videoInfo.width());
+        entity.setHeight(videoInfo.height());
+        entity.setDuration(videoInfo.duration());
+        entity.setThumbnailUrl(videoInfo.thumbnailUrl());
+        entity.setErrorMessage(videoInfo.errorMessage());
+        entity.setStatus(videoInfo.status());
+
+        VideoEntity saved = jpaRepository.save(entity);
+
+        return VideoInfoEntityMapper.mapToDomain(saved, new CycleAvoidingMappingContext());
     }
 }

@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.course.application.port.out;
+package com.simplon_project.skillhub.skillhub.course.application.port.out.video;
 
 import java.io.InputStream;
 

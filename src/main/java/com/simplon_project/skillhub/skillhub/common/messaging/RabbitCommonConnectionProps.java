@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.common.messaging;
 
+import com.simplon_project.skillhub.skillhub.common.messaging.api.RabbitConnectionProps;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 @ConfigurationProperties(prefix = "rabbitmq")
-public class RabbitCommonConnectionProps {
+public class RabbitCommonConnectionProps implements RabbitConnectionProps {
     private String host;
     private int port;
     private String username;

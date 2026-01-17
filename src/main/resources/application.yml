@@ -91,6 +91,18 @@ course:
     metadata-routing-key: ${RABBITMQ_METADATA_ROUTING_KEY:course.media.metadata.extracted.v1}
     uploaded-queue: ${RABBITMQ_UPLOADED_QUEUE:course.media.uploaded.queue}
     metadata-queue: ${RABBITMQ_METADATA_QUEUE:course.media.metadata.extracted.queue}
+
+    # Video polling (CONFIRM -> PROCESSING -> READY/FAILED)
+    video-polling:
+      enabled: ${RABBITMQ_VIDEO_POLLING_ENABLED:false}
+
+      polling-queue: ${RABBITMQ_VIDEO_POLLING_QUEUE:course.video.polling.queue}
+      polling-routing-key: ${RABBITMQ_VIDEO_POLLING_ROUTING_KEY:course.video.polling.requested}
+
+      polling-delay-queue: ${RABBITMQ_VIDEO_POLLING_DELAY_QUEUE:course.video.polling.delay.queue}
+      polling-delay-routing-key: ${RABBITMQ_VIDEO_POLLING_DELAY_ROUTING_KEY:course.video.polling.delay}
+
+      timeout-minutes: ${RABBITMQ_VIDEO_POLLING_TIMEOUT_MINUTES:15}
 ############################################################
 # 📦 MinIO
 ############################################################

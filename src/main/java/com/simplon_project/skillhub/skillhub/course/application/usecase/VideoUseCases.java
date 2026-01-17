@@ -1,16 +1,20 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.application.dto.UploadInstructions;
 import com.simplon_project.skillhub.skillhub.course.application.dto.VideoUploadInit;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.ConfirmVideoUploadPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.ConfirmVideoUploadCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitProviderUploadCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitVideoCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.ChapterRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoProviderInitPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoRepository;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.chapter.LoadChapterForVideoOpsPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.CreatePendingVideoForChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.EnqueueVideoPollingRequestPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
+import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,16 +25,19 @@ import java.time.Instant;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class VideoUseCases implements InitVideoInChapterPort {
+public class VideoUseCases implements InitVideoInChapterPort, ConfirmVideoUploadPort {
 
     public static final String PROVIDER_NAME = "VIMEO";
     public static final String DESCRIPTION = "";
     public static final String PRIVACY = "unlisted";
     public static final String DEFAULT_TITLE = "";
-    private final ChapterRepository chapterRepository; // your port (currently returns entities)
-    private final VideoRepository videoRepository;     // your port (currently returns entities)
+
+    private final LoadChapterForVideoOpsPort loadChapterForVideoOpsPort;
+    private final CreatePendingVideoForChapterPort createPendingVideoPort;
     private final VideoProviderInitPort videoProviderInitPort;
 
+    private final SaveVideoInfoPort saveVideoInfoPort;
+    private final EnqueueVideoPollingRequestPort enqueueVideoPollingRequestPort;
 
     @Override
     @Transactional("courseTxManager")
@@ -40,15 +47,12 @@ public class VideoUseCases implements InitVideoInChapterPort {
             throw new IllegalArgumentException("command must not be null");
         }
 
-        var courseId = EntityId.fromString(command.courseId());
-        var chapterId = EntityId.fromString(command.chapterId());
-
-        var chapter = chapterRepository.findByIdWithSectionAndCourse(chapterId)
+        var chapter = loadChapterForVideoOpsPort.loadChapterForVideoOps(Id.of(command.chapterId()))
                 .orElseThrow(() -> new IllegalStateException("Chapter not found: " + command.chapterId()));
 
         var fetchedCourseId = extractCourseIdFromDomain(chapter);
 
-        if (!courseId.equals(fetchedCourseId)) {
+        if (!(Id.of(command.courseId())).equals(fetchedCourseId)) {
             throw new IllegalStateException(
                     "Chapter %s does not belong to course %s".formatted(command.chapterId(), command.courseId())
             );
@@ -72,10 +76,9 @@ public class VideoUseCases implements InitVideoInChapterPort {
 
         var providerResult = videoProviderInitPort.initTusUpload(providerCommand);
 
-        var savedVideo = videoRepository.createPendingVideo(
-                chapterId,
-                providerResult.sourceUri(),
-                VideoStatusEnum.PENDING
+        var savedVideo = createPendingVideoPort.createPendingVideo(
+                chapter.getId(),
+                providerResult.sourceUri()
         );
 
         var expiresAt = providerResult.expiresAt();
@@ -93,13 +96,64 @@ public class VideoUseCases implements InitVideoInChapterPort {
         );
     }
 
-    private static EntityId extractCourseIdFromDomain(Chapter chapter) {
+
+// -----------------------
+    // CONFIRM
+    // -----------------------
+
+    @Override
+    @Transactional("courseTxManager")
+    public VideoInfo confirm(ConfirmVideoUploadCommand command) {
+
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
+
+        var courseId = Id.of(command.courseId());
+        var chapterId = Id.of(command.chapterId());
+
+        var chapter = loadChapterForVideoOpsPort.loadChapterForVideoOps(chapterId)
+                .orElseThrow(() -> new IllegalStateException("Chapter not found: " + command.chapterId()));
+
+        var fetchedCourseId = extractCourseIdFromDomain(chapter);
+
+        if (!courseId.equals(fetchedCourseId)) {
+            throw new IllegalStateException(
+                    "Chapter %s does not belong to course %s".formatted(command.chapterId(), command.courseId())
+            );
+        }
+
+        var current = chapter.getVideo();
+        if (current == null) {
+            throw new IllegalStateException("No initialized video for chapter " + command.chapterId());
+        }
+
+        // Domain transition: PENDING -> PROCESSING (and validates sourceUri)
+        var processing = current.markProcessing(command.sourceUri());
+
+        var saved = saveVideoInfoPort.save(processing);
+
+        // First poll is immediate (attempt=0). requestedAt=now. delayMs=0.
+        enqueueVideoPollingRequestPort.enqueue(
+                saved.id().asString(),
+                0,
+                Instant.now(),
+                0L
+        );
+
+        return saved;
+    }
+
+    // -----------------------
+    // Helpers
+    // -----------------------
+    private static Id extractCourseIdFromDomain(Chapter chapter) {
         if (chapter.getSection() == null
                 || chapter.getSection().getCourse() == null
                 || chapter.getSection().getCourse().getId() == null) {
             throw new IllegalStateException("Chapter is missing section/course relation (data integrity issue)");
         }
-        return EntityId.fromString(chapter.getSection().getCourse().getId().asString());
+        return chapter.getSection().getCourse().getId();
     }
 
     private static String normalizeNullable(String value) {

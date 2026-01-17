@@ -3,7 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateSectionPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateSectionCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.CourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CourseRepository;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import lombok.AllArgsConstructor;
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @AllArgsConstructor
-public class SectionUseCases  implements CreateSectionPort {
+public class SectionUseCases implements CreateSectionPort {
     private final CourseRepository courseRepository;
 
     @Override

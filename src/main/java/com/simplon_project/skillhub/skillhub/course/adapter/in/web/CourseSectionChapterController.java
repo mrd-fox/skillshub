@@ -1,12 +1,15 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.InitVideoResponseMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.ConfirmVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.InitVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.InitVideoResponse;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.ConfirmVideoUploadPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class CourseSectionChapterController {
 
     private final InitVideoInChapterPort initVideoInChapterPort;
-//    private final ConfirmVideoUploadPort confirmVideoUploadPort;
+    private final ConfirmVideoUploadPort confirmVideoUploadPort;
 
     @PostMapping("/init")
     @Operation(description = "Init a video upload for a chapter (Vimeo). Creates Video in PENDING and returns upload info.")
@@ -34,17 +37,19 @@ public class CourseSectionChapterController {
         return InitVideoResponseMapper.mapToResponse(init);
     }
 
-//    @PostMapping("/confirm")
-//    @Operation(description = "Confirm that upload is finished. Sets status to PROCESSING and starts server-side polling.")
-//    @ResponseStatus(HttpStatus.OK)
-//    public InitVideoResponse confirmVideo(
-//            @Parameter(description = "course id", required = true) @PathVariable String courseId,
-//            @Parameter(description = "section id", required = true) @PathVariable String sectionId,
-//            @Parameter(description = "chapter id", required = true) @PathVariable String chapterId,
-//            @RequestBody @Valid @NotNull ConfirmVideoInChapterRequest request
-//    ) {
-//        var command = request.toCommand(courseId, sectionId, chapterId);
-//        var updatedVideo = confirmVideoUploadPort.confirm(command);
+    @PostMapping("/confirm")
+    @Operation(description = "Confirm that upload is finished. Sets status to PROCESSING and starts server-side polling.")
+    @ResponseStatus(HttpStatus.OK)
+    public InitVideoResponse confirmVideo(
+            @Parameter(description = "course id", required = true) @PathVariable String courseId,
+            @Parameter(description = "section id", required = true) @PathVariable String sectionId,
+            @Parameter(description = "chapter id", required = true) @PathVariable String chapterId,
+            @RequestBody @Valid @NotNull ConfirmVideoInChapterRequest request
+    ) {
+        var command = request.toCommand(courseId, sectionId, chapterId);
+        var updatedVideo = confirmVideoUploadPort.confirm(command);
+
 //        return VideoResponseMapper.mapToVideoResponse(updatedVideo);
-//    }
+        return null;
+    }
 }

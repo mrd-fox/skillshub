@@ -1,6 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.config;
 
-import com.simplon_project.skillhub.skillhub.common.messaging.RabbitCommonConnectionProps;
+import com.simplon_project.skillhub.skillhub.common.messaging.api.RabbitConnectionProps;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -11,16 +11,26 @@ import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Configuration
 @RequiredArgsConstructor
+@EnableConfigurationProperties({
+        RabbitCourseProps.class,
+        RabbitCourseVideoPollingProps.class
+})
 public class RabbitCourseConfig {
 
-    private final RabbitCommonConnectionProps connectionProps;
+    private final RabbitConnectionProps connectionProps;
     private final RabbitCourseProps rabbitCourseProps;
+    private final RabbitCourseVideoPollingProps pollingProps;
 
     @Bean(name = "courseRabbitListenerContainerFactory")
     public SimpleRabbitListenerContainerFactory courseRabbitListenerContainerFactory(
@@ -91,5 +101,53 @@ public class RabbitCourseConfig {
         template.setMessageConverter(messageConverter());
         template.setExchange(rabbitCourseProps.getExchange());
         return template;
+    }
+    // -----------------------------
+    // Video polling infra (new)
+    // Enabled only when: course.rabbitmq.video-polling.enabled=true
+    // -----------------------------
+
+    @Bean(name = "courseVideoPollingQueue")
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
+    public Queue courseVideoPollingQueue() {
+        return new Queue(pollingProps.getPollingQueue(), true);
+    }
+
+    /**
+     * Delay queue with DLX:
+     * - messages are published here with a PER-MESSAGE TTL (expiration)
+     * - once expired, Rabbit dead-letters them back to the main exchange using pollingRoutingKey
+     */
+    @Bean(name = "courseVideoPollingDelayQueue")
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
+    public Queue courseVideoPollingDelayQueue(@Qualifier("courseExchange") TopicExchange courseExchange) {
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", courseExchange.getName());
+        args.put("x-dead-letter-routing-key", pollingProps.getPollingRoutingKey());
+
+        return new Queue(pollingProps.getPollingDelayQueue(), true, false, false, args);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
+    public Binding courseVideoPollingBinding(
+            @Qualifier("courseVideoPollingQueue") Queue pollingQueue,
+            @Qualifier("courseExchange") TopicExchange courseExchange
+    ) {
+        return BindingBuilder.bind(pollingQueue)
+                .to(courseExchange)
+                .with(pollingProps.getPollingRoutingKey());
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
+    public Binding courseVideoPollingDelayBinding(
+            @Qualifier("courseVideoPollingDelayQueue") Queue delayQueue,
+            @Qualifier("courseExchange") TopicExchange courseExchange
+    ) {
+        return BindingBuilder.bind(delayQueue)
+                .to(courseExchange)
+                .with(pollingProps.getPollingDelayRoutingKey());
     }
 }

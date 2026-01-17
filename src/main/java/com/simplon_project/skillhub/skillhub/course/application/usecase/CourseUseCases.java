@@ -4,9 +4,9 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateCo
 import com.simplon_project.skillhub.skillhub.course.application.port.in.GetCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.UploadMediaPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.SaveCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
