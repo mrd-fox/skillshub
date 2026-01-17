@@ -40,9 +40,8 @@ public class VideoRepositoryAdapter implements
     }
 
     @Override
-    public Optional<VideoEntity> loadVideoInfoById(EntityId videoId) {
-
-        return jpaRepository.findById(videoId);
+    public Optional<VideoInfo> loadVideoInfoById(String videoId) {
+        return jpaRepository.findById(EntityId.fromString(videoId)).map(entity -> VideoInfoEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
     }
 
     @Override

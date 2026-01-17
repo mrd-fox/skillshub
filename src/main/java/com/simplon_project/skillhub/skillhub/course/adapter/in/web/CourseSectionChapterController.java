@@ -1,9 +1,11 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.InitVideoResponseMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.VideoResponseMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.ConfirmVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.InitVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.InitVideoResponse;
+import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.VideoResponse;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.ConfirmVideoUploadPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,16 +42,19 @@ public class CourseSectionChapterController {
     @PostMapping("/confirm")
     @Operation(description = "Confirm that upload is finished. Sets status to PROCESSING and starts server-side polling.")
     @ResponseStatus(HttpStatus.OK)
-    public InitVideoResponse confirmVideo(
+    public VideoResponse confirmVideo(
             @Parameter(description = "course id", required = true) @PathVariable String courseId,
             @Parameter(description = "section id", required = true) @PathVariable String sectionId,
             @Parameter(description = "chapter id", required = true) @PathVariable String chapterId,
             @RequestBody @Valid @NotNull ConfirmVideoInChapterRequest request
     ) {
+        if (request == null) {
+            // Defensive guard - should be prevented by validation, but keeps contract safe.
+            throw new IllegalArgumentException("request must not be null");
+        }
+
         var command = request.toCommand(courseId, sectionId, chapterId);
         var updatedVideo = confirmVideoUploadPort.confirm(command);
-
-//        return VideoResponseMapper.mapToVideoResponse(updatedVideo);
-        return null;
+        return VideoResponseMapper.mapVideoInfoToResponse(updatedVideo);
     }
 }

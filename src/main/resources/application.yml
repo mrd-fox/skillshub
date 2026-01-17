@@ -94,7 +94,7 @@ course:
 
     # Video polling (CONFIRM -> PROCESSING -> READY/FAILED)
     video-polling:
-      enabled: ${RABBITMQ_VIDEO_POLLING_ENABLED:false}
+      enabled: true
 
       polling-queue: ${RABBITMQ_VIDEO_POLLING_QUEUE:course.video.polling.queue}
       polling-routing-key: ${RABBITMQ_VIDEO_POLLING_ROUTING_KEY:course.video.polling.requested}

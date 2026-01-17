@@ -98,7 +98,7 @@ public class RabbitCourseConfig {
             @Qualifier("courseMessageConverter") Jackson2JsonMessageConverter messageConverter
     ) {
         var template = new RabbitTemplate(connectionFactory);
-        template.setMessageConverter(messageConverter());
+        template.setMessageConverter(messageConverter);
         template.setExchange(rabbitCourseProps.getExchange());
         return template;
     }

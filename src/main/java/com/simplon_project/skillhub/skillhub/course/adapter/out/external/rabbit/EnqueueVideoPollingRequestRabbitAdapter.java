@@ -1,10 +1,12 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.external.rabbit;
 
+import com.simplon_project.skillhub.skillhub.course.adapter.messaging.VideoPollingMessage;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.EnqueueVideoPollingRequestPort;
 import com.simplon_project.skillhub.skillhub.course.config.RabbitCourseVideoPollingProps;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -13,10 +15,19 @@ import java.util.Objects;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPollingRequestPort {
     private final RabbitTemplate courseRabbitTemplate;
     private final RabbitCourseVideoPollingProps pollingProps;
+
+    @Value("${course.rabbitmq.exchange}")
+    private String exchange;
+
+    public EnqueueVideoPollingRequestRabbitAdapter(
+            @Qualifier("courseRabbitTemplate") RabbitTemplate courseRabbitTemplate,
+            RabbitCourseVideoPollingProps pollingProps) {
+        this.courseRabbitTemplate = courseRabbitTemplate;
+        this.pollingProps = pollingProps;
+    }
 
     @Override
     public void enqueue(String videoId, int attempt, Instant requestedAt, long delayMs) {
@@ -32,21 +43,24 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
         if (attempt < 0) {
             throw new IllegalArgumentException("attempt must be >= 0");
         }
+        if (delayMs < 0) {
+            throw new IllegalArgumentException("delayMs must be >= 0");
+        }
+        if (exchange == null || exchange.isBlank()) {
+            throw new IllegalStateException("Rabbit exchange is not configured (course.rabbitmq.exchange)");
+        }
 
-        Instant firstRequestedAt = Objects.requireNonNullElseGet(requestedAt, Instant::now);
+        Instant enqueuedAt = Objects.requireNonNullElseGet(requestedAt, Instant::now);
 
-        VideoPollingRequestedEvent payload = new VideoPollingRequestedEvent(
+        VideoPollingMessage payload = new VideoPollingMessage(
                 videoId,
                 attempt,
-                firstRequestedAt.toString()
+                enqueuedAt
         );
 
-        String routingKey;
-        if (delayMs > 0) {
-            routingKey = pollingProps.getPollingDelayRoutingKey();
-        } else {
-            routingKey = pollingProps.getPollingRoutingKey();
-        }
+        String routingKey = (delayMs > 0)
+                ? pollingProps.getPollingDelayRoutingKey()
+                : pollingProps.getPollingRoutingKey();
 
         if (routingKey == null || routingKey.isBlank()) {
             throw new IllegalStateException("Polling routingKey is not configured");
@@ -55,49 +69,23 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
         if (delayMs > 0) {
             String expiration = Long.toString(delayMs);
 
-            courseRabbitTemplate.convertAndSend(routingKey, payload, message -> {
+            courseRabbitTemplate.convertAndSend(exchange, routingKey, payload, message -> {
                 message.getMessageProperties().setExpiration(expiration);
                 message.getMessageProperties().setContentType("application/json");
                 message.getMessageProperties().setContentEncoding(StandardCharsets.UTF_8.name());
-                message.getMessageProperties().setHeader("x-attempt", attempt);
-                message.getMessageProperties().setHeader("x-first-requested-at", firstRequestedAt.toString());
                 return message;
             });
 
-            log.info("⏳ Enqueued video polling retry (delayed). videoId={} attempt={} delayMs={}", videoId, attempt, delayMs);
+            log.info("⏳ Enqueued video polling (delayed). videoId={} attempt={} delayMs={}", videoId, attempt, delayMs);
             return;
         }
 
-        courseRabbitTemplate.convertAndSend(routingKey, payload, message -> {
+        courseRabbitTemplate.convertAndSend(exchange, routingKey, payload, message -> {
             message.getMessageProperties().setContentType("application/json");
             message.getMessageProperties().setContentEncoding(StandardCharsets.UTF_8.name());
-            message.getMessageProperties().setHeader("x-attempt", attempt);
-            message.getMessageProperties().setHeader("x-first-requested-at", firstRequestedAt.toString());
             return message;
         });
 
         log.info("📨 Enqueued video polling (immediate). videoId={} attempt={}", videoId, attempt);
-    }
-
-    /**
-     * Stable payload for polling orchestration.
-     * Keep provider-agnostic: only videoId + retry context.
-     */
-    public record VideoPollingRequestedEvent(
-            String videoId,
-            int attempt,
-            String firstRequestedAt
-    ) {
-        public VideoPollingRequestedEvent {
-            if (videoId == null || videoId.isBlank()) {
-                throw new IllegalArgumentException("videoId must not be blank");
-            }
-            if (attempt < 0) {
-                throw new IllegalArgumentException("attempt must be >= 0");
-            }
-            if (firstRequestedAt == null || firstRequestedAt.isBlank()) {
-                throw new IllegalArgumentException("firstRequestedAt must not be blank");
-            }
-        }
     }
 }
