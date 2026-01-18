@@ -2,7 +2,6 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.rep
 
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,5 +26,36 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
             """)
     Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
 
-    List<CourseEntity> findByExternalUserId(String externalUserId, Sort sort);
+    // =========================
+    // Public catalog - LIST (metadata only)
+    // =========================
+    @Query("""
+                select c
+                from CourseEntity c
+                order by c.createdAt desc
+            """)
+    List<CourseEntity> findAllForPublicCatalog();
+
+    // =========================
+    // Public catalog - DETAIL (sections + chapters, NO video)
+    // =========================
+    @Query("""
+                select distinct c
+                from CourseEntity c
+                left join fetch c.sections s
+                left join fetch s.chapters ch
+                where c.courseId = :id
+            """)
+    Optional<CourseEntity> findByIdWithPublicTree(@Param("id") EntityId id);
+
+    // =========================
+    // Existing query used elsewhere (kept as-is)
+    // =========================
+    @Query("""
+                select c
+                from CourseEntity c
+                where c.externalUserId = :externalUserId
+                order by c.createdAt desc
+            """)
+    List<CourseEntity> findByExternalUserId(@Param("externalUserId") String externalUserId);
 }

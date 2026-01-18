@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.course.adapter.in.web;
+package com.simplon_project.skillhub.skillhub.course.adapter.in.web.controller;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.InitVideoResponseMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.VideoResponseMapper;
@@ -48,11 +48,6 @@ public class CourseSectionChapterController {
             @Parameter(description = "chapter id", required = true) @PathVariable String chapterId,
             @RequestBody @Valid @NotNull ConfirmVideoInChapterRequest request
     ) {
-        if (request == null) {
-            // Defensive guard - should be prevented by validation, but keeps contract safe.
-            throw new IllegalArgumentException("request must not be null");
-        }
-
         var command = request.toCommand(courseId, sectionId, chapterId);
         var updatedVideo = confirmVideoUploadPort.confirm(command);
         return VideoResponseMapper.mapVideoInfoToResponse(updatedVideo);

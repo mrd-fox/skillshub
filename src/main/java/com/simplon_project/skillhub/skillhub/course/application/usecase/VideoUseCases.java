@@ -136,7 +136,7 @@ public class VideoUseCases implements InitVideoInChapterPort, ConfirmVideoUpload
         // First poll is immediate (attempt=0). requestedAt=now. delayMs=0.
         enqueueVideoPollingRequestPort.enqueue(
                 saved.id().asString(),
-                0,
+                1,
                 Instant.now(),
                 0L
         );

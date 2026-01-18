@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.course.adapter.in.web;
+package com.simplon_project.skillhub.skillhub.course.adapter.in.web.controller;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.CourseResponseMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateChapterRequest;
@@ -12,13 +12,11 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.GetCours
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -76,7 +74,7 @@ public class CourseController {
     @GetMapping
     public List<CourseResponse> getCourses(
             @RequestHeader(name = "X-User-Id", required = false) String externalUserId,
-            @RequestHeader(name = "X-User-Roles", required = false) String userRolesCsv    ){
+            @RequestHeader(name = "X-User-Roles", required = false) String userRolesCsv) {
         var command = GetCourseCommand.of(externalUserId, userRolesCsv);
         var courses = getCoursePort.getCourse(command);
         return CourseResponseMapper.mapToCourseResponses(courses);
