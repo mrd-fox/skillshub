@@ -10,14 +10,20 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateCo
 import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateSectionPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.GetCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.zalando.problem.Problem;
 
 import java.util.List;
 
@@ -75,8 +81,51 @@ public class CourseController {
     public List<CourseResponse> getCourses(
             @RequestHeader(name = "X-User-Id", required = false) String externalUserId,
             @RequestHeader(name = "X-User-Roles", required = false) String userRolesCsv) {
-        var command = GetCourseCommand.of(externalUserId, userRolesCsv);
-        var courses = getCoursePort.getCourse(command);
+        var command = GetCoursesCommand.of(externalUserId, userRolesCsv);
+        var courses = getCoursePort.getCourses(command);
         return CourseResponseMapper.mapToCourseResponses(courses);
     }
+
+    @Operation(
+            summary = "Get course detail",
+            description = "Returns full course outline (sections and chapters). \" +\n" +
+                    "                \"If authenticated, includes Vimeo video links. Otherwise, returns public view only."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CourseResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Course not found",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            )
+    })
+    @GetMapping("/{courseId}")
+    public CourseResponse getPublicCourseDetail(
+            @RequestHeader(name = "X-User-Id", required = false) String externalUserId,
+            @RequestHeader(name = "X-User-Roles", required = false) String userRolesCsv,
+            @Parameter(description = "course id", required = true) @PathVariable String courseId
+    ) {
+        var command = GetCourseCommand.of(externalUserId, userRolesCsv, courseId);
+        var course = getCoursePort.getCourse(command);
+        return CourseResponseMapper.mapToCourseResponse(course);
+    }
+
 }

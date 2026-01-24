@@ -2,20 +2,17 @@ package com.simplon_project.skillhub.skillhub.course.application.port.in.command
 
 import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import lombok.Builder;
 
 import java.util.Set;
 
-public record GetCourseCommand(
+public record GetCoursesCommand(
         String externalAuthorId,
-        Set<UserRole> userRoles,
-        String courseId
+        Set<UserRole> userRoles
 ) {
 
     @Builder
-    public static GetCourseCommand of(String externalAuthorId, String rawRoles, String courseId) {
+    public static GetCoursesCommand of(String externalAuthorId, String rawRoles) {
 
         if (externalAuthorId == null || externalAuthorId.isBlank()) {
             throw new IllegalArgumentException("X-User-Id is missing or blank");
@@ -31,11 +28,6 @@ public record GetCourseCommand(
         }
 
         // ✅ appel du constructeur canonique
-        return new GetCourseCommand(externalAuthorId, roles, courseId);
+        return new GetCoursesCommand(externalAuthorId, roles);
     }
-
-    public Course mapTodomain() {
-        return Course.builder().id(Id.of(this.courseId)).build();
-    }
-
 }

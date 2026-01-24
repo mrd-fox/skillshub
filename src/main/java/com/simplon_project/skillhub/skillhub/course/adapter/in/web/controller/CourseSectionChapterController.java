@@ -52,4 +52,6 @@ public class CourseSectionChapterController {
         var updatedVideo = confirmVideoUploadPort.confirm(command);
         return VideoResponseMapper.mapVideoInfoToResponse(updatedVideo);
     }
+
+
 }
