@@ -127,9 +127,12 @@ public class VideoUseCases implements InitVideoInChapterPort, ConfirmVideoUpload
         if (current == null) {
             throw new IllegalStateException("No initialized video for chapter " + command.chapterId());
         }
+        if (current.sourceUri() == null || current.sourceUri().isBlank()) {
+            throw new IllegalStateException("Video has no sourceUri, cannot confirm upload for chapter " + command.chapterId());
+        }
 
         // Domain transition: PENDING -> PROCESSING (and validates sourceUri)
-        var processing = current.markProcessing(command.sourceUri());
+        var processing = current.markProcessing();
 
         var saved = saveVideoInfoPort.save(processing);
 

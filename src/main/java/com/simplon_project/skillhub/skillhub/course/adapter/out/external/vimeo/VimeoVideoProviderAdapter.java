@@ -33,11 +33,15 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
     public static final String PATH_POLL_VIDEO_BY_ID = "/videos/{id}";
     public static final String BEARER = "Bearer ";
     public static final String PATH_INIT_ME_VIDEOS = "/me/videos";
+
     private final WebClient webClient;
+
     @Value("${vimeo.base-url}")
     private String vimeoApiBase;
+
     @Value("${vimeo.accept}")
     private String vimeoAccept;
+
     @Value("${vimeo.access-token}")
     private String accessToken;
 
@@ -74,8 +78,7 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
             String providerVideoId = extractVideoIdFromVimeoUri(body.uri()); // "/videos/{id}"
             String sourceUri = PREFIX_VIMEO + providerVideoId;
 
-            // Vimeo does not consistently provide an expiry for the upload_link.
-            Instant expiresAt = null;
+            Instant expiresAt = null; // Vimeo does not consistently provide expiry
 
             return new VideoUploadInitResult(
                     providerVideoId,
@@ -107,6 +110,11 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
     public Optional<ProviderPollingSnapshot> poll(String sourceUri) {
         String vimeoId = extractVimeoIdFromSourceUri(sourceUri);
 
+        log.info(
+                "Vimeo poll start: sourceUri={} vimeoId={} endpoint={}/videos/{}",
+                sourceUri, vimeoId, vimeoApiBase, vimeoId
+        );
+
         try {
             VimeoVideoResponse response = webClient
                     .get()
@@ -122,7 +130,47 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
                 throw new VideoProviderPollingException("Vimeo returned an empty response for id=" + vimeoId);
             }
 
-            return Optional.of(mapToSnapshot(vimeoId, response));
+            String picturesBaseLink = (response.pictures() != null) ? response.pictures().baseLink() : null;
+
+            String uploadStatus = (response.upload() != null) ? response.upload().status() : null;
+            Long uploadSize = (response.upload() != null) ? response.upload().size() : null;
+            String transcodeStatus = (response.transcode() != null) ? response.transcode().status() : null;
+            String playStatus = (response.play() != null) ? response.play().status() : null;
+
+            String errorMsg = (response.error() != null) ? response.error().message() : null;
+
+            log.info(
+                    "Vimeo poll HTTP 200: id={} status={} upload.status={} upload.size={} transcode.status={} play.status={} isPlayable={} duration={} size={} width={} height={} pictures.base_link={} error={}",
+                    vimeoId,
+                    response.status(),
+                    uploadStatus,
+                    uploadSize,
+                    transcodeStatus,
+                    playStatus,
+                    response.isPlayable(),
+                    response.duration(),
+                    response.size(),
+                    response.width(),
+                    response.height(),
+                    picturesBaseLink,
+                    errorMsg
+            );
+
+            ProviderPollingSnapshot mapped = mapToSnapshot(vimeoId, response);
+
+            log.info(
+                    "Vimeo poll mapped: id={} state={} durationSeconds={} sizeBytes={} width={} height={} thumbnailUrl={} errorMessage={}",
+                    vimeoId,
+                    mapped.state(),
+                    mapped.durationSeconds(),
+                    mapped.sizeBytes(),
+                    mapped.width(),
+                    mapped.height(),
+                    mapped.thumbnailUrl(),
+                    mapped.errorMessage()
+            );
+
+            return Optional.of(mapped);
 
         } catch (WebClientResponseException ex) {
 
@@ -136,25 +184,13 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
             String body = safeBody(ex);
 
             if (status >= 400 && status < 500) {
-                log.warn(
-                        "Vimeo poll failed (client error): status={} id={} body={}",
-                        status,
-                        vimeoId,
-                        body
-                );
+                log.warn("Vimeo poll failed (client error): status={} id={} body={}", status, vimeoId, body);
             } else {
-                log.error(
-                        "Vimeo poll failed (server error): status={} id={} body={}",
-                        status,
-                        vimeoId,
-                        body
-                );
+                log.error("Vimeo poll failed (server error): status={} id={} body={}", status, vimeoId, body);
             }
 
-            throw new VideoProviderPollingException(
-                    "Vimeo polling failed: status=" + status + " id=" + vimeoId,
-                    ex
-            );
+            throw new VideoProviderPollingException("Vimeo polling failed: status=" + status + " id=" + vimeoId, ex);
+
         } catch (Exception ex) {
             log.error("Vimeo poll failed (unexpected error): id={}", vimeoId, ex);
             throw new VideoProviderPollingException("Vimeo polling failed for id=" + vimeoId, ex);
@@ -186,7 +222,6 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
         } else if (p.equals("unlisted")) {
             return "unlisted";
         } else if (p.equals("public")) {
-            // Vimeo uses "anybody" to indicate public visibility.
             return "anybody";
         } else {
             return "private";
@@ -194,7 +229,6 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
     }
 
     private String extractVideoIdFromVimeoUri(String uri) {
-        // Expected format: "/videos/{id}"
         String trimmed = uri.trim();
         int idx = trimmed.lastIndexOf('/');
         if (idx < 0 || idx == trimmed.length() - 1) {
@@ -226,22 +260,24 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
         }
     }
 
-
     private ProviderPollingSnapshot mapToSnapshot(String vimeoId, VimeoVideoResponse response) {
 
-        var state = mapProviderState(response);
+        ProviderPollingStateEnum state = mapProviderState(response);
 
         String thumbnailUrl = null;
         if (response.pictures() != null && hasText(response.pictures().baseLink())) {
             thumbnailUrl = response.pictures().baseLink();
         }
 
-        var durationSeconds = response.duration();
-
+        Long durationSeconds = response.duration();
         Integer width = response.width();
         Integer height = response.height();
 
-        var sizeBytes = response.size();
+        // size can be at root or inside upload object (Vimeo moves it once upload is finished)
+        Long sizeBytes = response.size();
+        if (sizeBytes == null && response.upload() != null) {
+            sizeBytes = response.upload().size();
+        }
 
         String format = null;
         if (hasText(response.type())) {
@@ -249,10 +285,8 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
         }
 
         String errorMessage = null;
-        if (state == ProviderPollingStateEnum.ERROR) {
-            if (response.error() != null && hasText(response.error().message())) {
-                errorMessage = response.error().message();
-            }
+        if (response.error() != null && hasText(response.error().message())) {
+            errorMessage = response.error().message();
         }
 
         return new ProviderPollingSnapshot(
@@ -270,20 +304,40 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
 
     private ProviderPollingStateEnum mapProviderState(VimeoVideoResponse response) {
 
-        String status = response.status();
-
-        if (!hasText(status)) {
-            return ProviderPollingStateEnum.PROCESSING;
-        }
-
-        String s = status.trim().toLowerCase();
-
-        if (s.equals("available")) {
-            return ProviderPollingStateEnum.AVAILABLE;
-        } else if (s.equals("error") || s.equals("failed")) {
+        // 1) Hard error signal from Vimeo
+        if (response.error() != null && hasText(response.error().message())) {
+            log.debug("Vimeo poll: ERROR state detected. error={}", response.error().message());
             return ProviderPollingStateEnum.ERROR;
-        } else {
-            return ProviderPollingStateEnum.PROCESSING;
         }
+
+        // 2) Strong "available" signal based on the fields you pasted from Vimeo
+        boolean playable = Boolean.TRUE.equals(response.isPlayable());
+
+        String playStatus = (response.play() != null) ? response.play().status() : null;
+        String transcodeStatus = (response.transcode() != null) ? response.transcode().status() : null;
+        String uploadStatus = (response.upload() != null) ? response.upload().status() : null;
+
+        boolean playOk = hasText(playStatus) && playStatus.trim().equalsIgnoreCase("playable");
+        boolean transcodeOk = hasText(transcodeStatus) && transcodeStatus.trim().equalsIgnoreCase("complete");
+        boolean uploadOk = hasText(uploadStatus) && uploadStatus.trim().equalsIgnoreCase("complete");
+
+        if (playable && playOk && transcodeOk && uploadOk) {
+            log.debug("Vimeo poll: AVAILABLE state detected (all criteria met).");
+            return ProviderPollingStateEnum.AVAILABLE;
+        }
+
+        // 3) Fallback on root status if present
+        String status = response.status();
+        if (hasText(status) && status.trim().equalsIgnoreCase("available")) {
+            log.debug("Vimeo poll: AVAILABLE state detected (root status is available).");
+            return ProviderPollingStateEnum.AVAILABLE;
+        }
+
+        // Detailed log to understand which criteria is blocking the transition to AVAILABLE
+        log.debug("Vimeo poll: PROCESSING state. playable={} playOk={} transcodeOk={} uploadOk={} status={}",
+                playable, playOk, transcodeOk, uploadOk, status);
+
+        // Otherwise still processing
+        return ProviderPollingStateEnum.PROCESSING;
     }
 }

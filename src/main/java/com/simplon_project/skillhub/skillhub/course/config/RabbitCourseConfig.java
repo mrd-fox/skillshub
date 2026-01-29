@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.config;
 
-import com.simplon_project.skillhub.skillhub.common.messaging.api.RabbitConnectionProps;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.simplon_project.skillhub.skillhub.common.messaging.RabbitConnectionProps;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -31,6 +32,7 @@ public class RabbitCourseConfig {
     private final RabbitConnectionProps connectionProps;
     private final RabbitCourseProps rabbitCourseProps;
     private final RabbitCourseVideoPollingProps pollingProps;
+    private final ObjectMapper objectMapper;
 
     @Bean(name = "courseRabbitListenerContainerFactory")
     public SimpleRabbitListenerContainerFactory courseRabbitListenerContainerFactory(
@@ -89,7 +91,7 @@ public class RabbitCourseConfig {
 
     @Bean(name = "courseMessageConverter")
     public Jackson2JsonMessageConverter messageConverter() {
-        return new Jackson2JsonMessageConverter();
+        return new Jackson2JsonMessageConverter(objectMapper);
     }
 
     @Bean(name = "courseRabbitTemplate")

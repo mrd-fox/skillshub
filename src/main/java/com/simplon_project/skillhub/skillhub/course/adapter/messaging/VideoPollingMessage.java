@@ -11,7 +11,12 @@ import java.util.Objects;
 public record VideoPollingMessage(
         String videoId,
         int attempt,
-        Instant enqueuedAt
+        Instant enqueuedAt,
+        Long size,
+        Long duration,
+        Integer width,
+        Integer height,
+        String thumbnailUrl
 ) {
 
     public VideoPollingMessage {
@@ -27,10 +32,25 @@ public record VideoPollingMessage(
     }
 
     public static VideoPollingMessage firstAttempt(String videoId) {
-        return new VideoPollingMessage(videoId, 0, Instant.now());
+        return new VideoPollingMessage(videoId, 0, Instant.now(), null, null, null, null, null);
     }
 
-    public VideoPollingMessage nextAttempt() {
-        return new VideoPollingMessage(this.videoId, this.attempt + 1, Instant.now());
+    public VideoPollingMessage nextAttempt(
+            Long currentSize,
+            Long currentDuration,
+            Integer currentWidth,
+            Integer currentHeight,
+            String currentThumbnailUrl
+    ) {
+        return new VideoPollingMessage(
+                this.videoId,
+                this.attempt + 1,
+                Instant.now(),
+                currentSize != null ? currentSize : this.size,
+                currentDuration != null ? currentDuration : this.duration,
+                currentWidth != null ? currentWidth : this.width,
+                currentHeight != null ? currentHeight : this.height,
+                currentThumbnailUrl != null ? currentThumbnailUrl : this.thumbnailUrl
+        );
     }
 }

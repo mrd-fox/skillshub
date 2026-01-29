@@ -17,7 +17,7 @@ public record VideoInfo(
         String errorMessage,       // can be null
         VideoStatusEnum status     // required
 ) {
-    public VideoInfo markProcessing(String confirmedSourceUri) {
+    public VideoInfo markProcessing() {
 
         if (this.status != VideoStatusEnum.PENDING) {
             throw new IllegalStateException(
@@ -27,7 +27,7 @@ public record VideoInfo(
 
         return VideoInfo.builder()
                 .id(this.id)
-                .sourceUri(confirmedSourceUri)
+                .sourceUri(this.sourceUri)
                 .key(this.key)
                 .duration(this.duration)
                 .format(this.format)
@@ -53,6 +53,7 @@ public record VideoInfo(
             Long size
     ) {
         requireStatus(VideoStatusEnum.PROCESSING, "mark ready");
+        requireValidSourceUri(this.sourceUri);
 
         return VideoInfo.builder()
                 .id(this.id)
@@ -74,6 +75,7 @@ public record VideoInfo(
      */
     public VideoInfo markFailed(String errorMessage) {
         requireStatus(VideoStatusEnum.PROCESSING, "mark failed");
+        requireValidSourceUri(this.sourceUri);
 
         if (errorMessage == null || errorMessage.isBlank()) {
             throw new IllegalArgumentException("errorMessage must not be blank");
@@ -100,6 +102,7 @@ public record VideoInfo(
      */
     public VideoInfo markExpired(String errorMessage) {
         requireStatus(VideoStatusEnum.PENDING, "mark expired");
+        requireValidSourceUri(this.sourceUri);
 
         String finalError = errorMessage;
         if (finalError == null || finalError.isBlank()) {
@@ -152,6 +155,5 @@ public record VideoInfo(
             throw new IllegalArgumentException("sourceUri scheme must not be blank");
         }
     }
-
 
 }

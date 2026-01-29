@@ -1,6 +1,5 @@
 package com.simplon_project.skillhub.skillhub.common.messaging;
 
-import com.simplon_project.skillhub.skillhub.common.messaging.api.RabbitConnectionProps;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;

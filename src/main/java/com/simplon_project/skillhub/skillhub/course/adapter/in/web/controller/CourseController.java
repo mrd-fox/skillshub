@@ -4,11 +4,9 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.Course
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateCourseRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateSectionRequest;
+import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.UpdateCourseRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.CourseResponse;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateChapterPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateSectionPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.GetCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +32,7 @@ import java.util.List;
 @RequestMapping("/api/course")
 public class CourseController {
     private final CreateCoursePort createCoursePort;
+    private final UpdateCoursePort updateCoursePort;
     private final CreateChapterPort createChapterPort;
     private final GetCoursePort getCoursePort;
     private final CreateSectionPort createSectionPort;
@@ -53,6 +53,44 @@ public class CourseController {
         var course = createCoursePort.createCourse(command);
         return CourseResponseMapper.mapToCourseResponse(course);
     }
+
+    @PutMapping("/{courseId}")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Update a course (PATCH-like payload)",
+            description = "Updates course fields and optionally applies sections/chapters patch. "
+                    + "If section/chapter id is null => create. If id is present => update."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Course updated",
+                    content = @Content(schema = @Schema(implementation = CourseResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "401", description = "Missing user context"),
+            @ApiResponse(responseCode = "403", description = "Not allowed"),
+            @ApiResponse(responseCode = "404", description = "Course not found")
+    })
+    public CourseResponse updateCourse(
+            @Parameter(description = "Course id", required = true)
+            @PathVariable @NotBlank String courseId,
+
+            @Parameter(description = "Authenticated user external id (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Id") @NotBlank String externalAuthorId,
+
+            @Parameter(description = "Authenticated user roles CSV (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Roles") @NotBlank String rawRoles,
+
+            @RequestBody @Valid @NotNull UpdateCourseRequest request
+    ) {
+
+        var command = request.mapToCommand(courseId, externalAuthorId, rawRoles);
+        var updatedCourse = updateCoursePort.updateCourse(command);
+
+        return CourseResponseMapper.mapToCourseResponse(updatedCourse);
+    }
+    
 
     @PostMapping("courses/{courseId}/sections/{sectionId}/chapters")
     @Operation(description = "Create a draft of chapter")

@@ -1,23 +1,15 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
+import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.CreateCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.GetCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.GetPublicCourseDetailPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.ListPublicCoursesPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.CreateCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetPublicCourseDetailCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.AccessLevelEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseDetail;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseSummary;
+import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import com.simplon_project.skillhub.skillhub.course.domain.policy.CourseAccessPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,11 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 public class CourseUseCases implements
         CreateCoursePort,
+        UpdateCoursePort,
         UploadMediaPort,
         GetCoursePort,
         ListPublicCoursesPort,
@@ -51,6 +49,51 @@ public class CourseUseCases implements
         var course = command.mapToDomain();
         saveCoursePort.assertCourseNotExists(course);
         return saveCoursePort.saveCourse(course);
+    }
+
+    @Transactional("courseTxManager")
+    @Override
+    public Course updateCourse(UpdateCourseCommand command) {
+
+        var courseId = Id.of(command.courseId());
+
+        var existing = loadCourseWithVideoPort.loadWithVideo(courseId);
+        if (existing == null) {
+            throw new CourseNotFoundException(courseId);
+        }
+
+        var roles = Helper.extractUserRoles(command.rawRoles());
+
+        // Authorization: ADMIN can update any course, TUTOR only own course
+        if (!roles.contains(UserRole.ADMIN)) {
+            if (!Objects.equals(existing.getExternalUserId(), command.externalAuthorId())) {
+                throw new CourseNotFoundException(courseId);
+            }
+        }
+
+        if (command.title() != null) {
+            if (!Objects.equals(command.title(), existing.getTitle())) {
+                // Uniqueness check is persistence-level, cannot be done in Command
+                var candidate = Course.builder().title(command.title()).build();
+                saveCoursePort.assertCourseNotExists(candidate);
+                existing.setTitle(command.title());
+            }
+
+        }
+
+        if (command.description() != null) {
+            existing.setDescription(command.description());
+        }
+
+        if (command.price() != null) {
+            existing.setPrice(command.price());
+        }
+
+        if (command.sections() != null) {
+            applySectionsPatch(existing, command.sections());
+        }
+
+        return saveCoursePort.saveCourse(existing);
     }
 
     @Override
@@ -127,4 +170,88 @@ public class CourseUseCases implements
         return loadPublicCourseDetailPort.loadPublicCourseDetail(command.courseId())
                 .orElseThrow(() -> new CourseNotFoundException(command.courseId()));
     }
+
+
+// ========================================================================
+// PATCH helpers
+// ========================================================================
+
+    private void applySectionsPatch(Course course, List<UpdateSectionCommand> patchSections) {
+
+        Map<Id, Section> existingById = safeSections(course).stream()
+                .filter(s -> s.getId() != null)
+                .collect(Collectors.toMap(Section::getId, Function.identity(), (a, b) -> a));
+
+        for (UpdateSectionCommand sectionCmd : patchSections) {
+
+            Section patch = sectionCmd.mapToDomain();
+            Section current = existingById.get(patch.getId());
+
+            if (current == null) {
+                // CREATE
+                course.addSection(patch);
+
+                // optional chapters on create
+                if (sectionCmd.chapters() != null) {
+                    applyChaptersPatch(patch, sectionCmd.chapters());
+                }
+                continue;
+            }
+
+            // UPDATE only provided fields
+            if (patch.getTitle() != null) {
+                current.setTitle(patch.getTitle());
+            }
+            if (patch.getPosition() != null) {
+                current.setPosition(patch.getPosition());
+            }
+
+            // optional chapters patch
+            if (sectionCmd.chapters() != null) {
+                applyChaptersPatch(current, sectionCmd.chapters());
+            }
+        }
+    }
+
+    private void applyChaptersPatch(Section section, List<UpdateChapterCommand> patchChapters) {
+
+        Map<Id, Chapter> existingById = safeChapters(section).stream()
+                .filter(c -> c.getId() != null)
+                .collect(Collectors.toMap(Chapter::getId, Function.identity(), (a, b) -> a));
+
+        for (UpdateChapterCommand chapterCmd : patchChapters) {
+
+            Chapter patch = chapterCmd.mapToDomain();
+            Chapter current = existingById.get(patch.getId());
+
+            if (current == null) {
+                // CREATE
+                section.addChapter(patch);
+                continue;
+            }
+
+            // UPDATE
+            if (patch.getTitle() != null) {
+                current.setTitle(patch.getTitle());
+            }
+            if (patch.getPosition() != null) {
+                current.setPosition(patch.getPosition());
+            }
+        }
+    }
+
+    private Set<Section> safeSections(Course course) {
+        if (course.getSections() == null) {
+            return Set.of();
+        }
+        return course.getSections();
+    }
+
+    private Set<Chapter> safeChapters(Section section) {
+        if (section.getChapters() == null) {
+            return Set.of();
+        }
+        return section.getChapters();
+    }
+
 }

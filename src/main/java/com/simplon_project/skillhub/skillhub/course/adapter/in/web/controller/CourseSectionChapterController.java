@@ -2,16 +2,15 @@ package com.simplon_project.skillhub.skillhub.course.adapter.in.web.controller;
 
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.InitVideoResponseMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.mapper.VideoResponseMapper;
-import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.ConfirmVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.InitVideoInChapterRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.InitVideoResponse;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.VideoResponse;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.ConfirmVideoUploadPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.ConfirmVideoUploadCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -45,10 +44,10 @@ public class CourseSectionChapterController {
     public VideoResponse confirmVideo(
             @Parameter(description = "course id", required = true) @PathVariable String courseId,
             @Parameter(description = "section id", required = true) @PathVariable String sectionId,
-            @Parameter(description = "chapter id", required = true) @PathVariable String chapterId,
-            @RequestBody @Valid @NotNull ConfirmVideoInChapterRequest request
+            @Parameter(description = "chapter id", required = true) @PathVariable String chapterId
+
     ) {
-        var command = request.toCommand(courseId, sectionId, chapterId);
+        var command = new ConfirmVideoUploadCommand(courseId, sectionId, chapterId);
         var updatedVideo = confirmVideoUploadPort.confirm(command);
         return VideoResponseMapper.mapVideoInfoToResponse(updatedVideo);
     }

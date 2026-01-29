@@ -20,8 +20,8 @@ public class VideoInfoEntityMapper {
 
         var domain = new VideoInfo(
                 Id.of(entity.getId().toString()),
-                entity.getStorageKey(),
                 entity.getSourceUri(),
+                entity.getStorageKey(),
                 entity.getDuration(),
                 entity.getFormat(),
                 entity.getSize(),
@@ -49,8 +49,8 @@ public class VideoInfoEntityMapper {
 
         var entity = VideoEntity.builder()
                 .videoId(EntityId.of(videoUuid))
-                .sourceUri(domain.sourceUri())
                 .storageKey(domain.key()) // optional
+                .sourceUri(domain.sourceUri())
                 .duration(domain.duration())
                 .format(domain.format())
                 .size(domain.size())

@@ -56,7 +56,10 @@ public class VideoPollingListener {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @RabbitListener(queues = "${course.rabbitmq.video-polling.polling-queue}")
+    @RabbitListener(
+            queues = "${course.rabbitmq.video-polling.polling-queue}",
+            containerFactory = "courseRabbitListenerContainerFactory"
+    )
     public void onMessage(VideoPollingMessage message) {
 
         if (message == null) {
@@ -83,7 +86,12 @@ public class VideoPollingListener {
             String error = "Polling timeout after " + message.attempt() + " attempts (~" + timeoutMinutes + " minutes)";
             VideoInfo failed = video.markFailed(error);
             saveVideoInfoPort.save(failed);
-            log.error("Video polling timeout -> marked FAILED: videoId={} attempt={} timeoutMinutes={}", message.videoId(), message.attempt(), timeoutMinutes);
+            log.error(
+                    "Video polling timeout -> marked FAILED: videoId={} attempt={} timeoutMinutes={}",
+                    message.videoId(),
+                    message.attempt(),
+                    timeoutMinutes
+            );
             return;
         }
 
@@ -100,13 +108,14 @@ public class VideoPollingListener {
             ProviderPollingSnapshot snapshot = maybeSnapshot.get();
 
             if (snapshot.state() == ProviderPollingStateEnum.AVAILABLE) {
+                // When READY, we merge metadata from current poll and previous accumulated metadata in the message
                 VideoInfo ready = video.markReady(
-                        snapshot.thumbnailUrl(),
-                        snapshot.durationSeconds(),
-                        snapshot.width(),
-                        snapshot.height(),
+                        coalesce(snapshot.thumbnailUrl(), message.thumbnailUrl()),
+                        coalesce(snapshot.durationSeconds(), message.duration()),
+                        coalesce(snapshot.width(), message.width()),
+                        coalesce(snapshot.height(), message.height()),
                         snapshot.format(),
-                        snapshot.sizeBytes()
+                        coalesce(snapshot.sizeBytes(), message.size())
                 );
                 saveVideoInfoPort.save(ready);
                 log.info("Video marked READY: videoId={}", message.videoId());
@@ -121,12 +130,19 @@ public class VideoPollingListener {
                 return;
             }
 
-            VideoPollingMessage next = message.nextAttempt();
+            // Still processing: re-enqueue with updated metadata carrier
+            VideoPollingMessage next = message.nextAttempt(
+                    snapshot.sizeBytes(),
+                    snapshot.durationSeconds(),
+                    snapshot.width(),
+                    snapshot.height(),
+                    snapshot.thumbnailUrl()
+            );
             enqueueNext(next);
             log.info("Video still processing -> re-enqueued: videoId={} attempt={}", next.videoId(), next.attempt());
 
         } catch (VideoProviderPollingException ex) {
-            VideoPollingMessage next = message.nextAttempt();
+            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null);
             enqueueNext(next);
             log.warn(
                     "Provider polling failed -> re-enqueued: videoId={} attempt={} err={}",
@@ -135,13 +151,46 @@ public class VideoPollingListener {
                     ex.getMessage()
             );
         } catch (Exception ex) {
-            VideoPollingMessage next = message.nextAttempt();
+            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null);
             enqueueNext(next);
             log.error("Unexpected polling error -> re-enqueued: videoId={} attempt={}", next.videoId(), next.attempt(), ex);
         }
     }
 
+    private <T> T coalesce(T current, T previous) {
+        return current != null ? current : previous;
+    }
+
     private void enqueueNext(VideoPollingMessage message) {
-        rabbitTemplate.convertAndSend(exchange, delayRoutingKey, message);
+        long delayMs = computeDelayMs(message.attempt());
+
+        log.debug("Enqueuing next polling attempt: exchange={}, routingKey={}, videoId={}, attempt={}, delayMs={}",
+                exchange, delayRoutingKey, message.videoId(), message.attempt(), delayMs);
+
+        rabbitTemplate.convertAndSend(exchange, delayRoutingKey, message, msg -> {
+            // Per-message TTL (works with a DLX-based delay queue).
+            // IMPORTANT: ensure the delay queue doesn't enforce a smaller x-message-ttl than this value.
+            msg.getMessageProperties().setExpiration(Long.toString(delayMs));
+            // Explicitly set content type and encoding to ensure correct deserialization when the message returns from the delay queue
+            msg.getMessageProperties().setContentType("application/json");
+            msg.getMessageProperties().setContentEncoding("UTF-8");
+            return msg;
+        });
+
+        log.info("Video polling scheduled: videoId={} attempt={} delayMs={}", message.videoId(), message.attempt(), delayMs);
+    }
+
+    private long computeDelayMs(int attempt) {
+        // Backoff tuned for MVP: reduces spam but keeps feedback reasonably fast.
+        // Total worst-case time (30 attempts) ~ 12-13 minutes.
+        if (attempt <= 5) {
+            return 5_000L;   // 5s
+        } else if (attempt <= 10) {
+            return 10_000L;  // 10s
+        } else if (attempt <= 20) {
+            return 20_000L;  // 20s
+        } else {
+            return 50_000L;  // 50s
+        }
     }
 }

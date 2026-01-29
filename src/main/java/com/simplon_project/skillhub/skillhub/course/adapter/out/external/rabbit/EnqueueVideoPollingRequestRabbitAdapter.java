@@ -55,7 +55,12 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
         VideoPollingMessage payload = new VideoPollingMessage(
                 videoId,
                 attempt,
-                enqueuedAt
+                enqueuedAt,
+                null, // size
+                null, // duration
+                null, // width
+                null, // height
+                null  // thumbnailUrl
         );
 
         String routingKey = (delayMs > 0)
@@ -71,6 +76,7 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
 
             courseRabbitTemplate.convertAndSend(exchange, routingKey, payload, message -> {
                 message.getMessageProperties().setExpiration(expiration);
+                // Ensure message is treated as JSON and UTF-8 for reliable deserialization when retried
                 message.getMessageProperties().setContentType("application/json");
                 message.getMessageProperties().setContentEncoding(StandardCharsets.UTF_8.name());
                 return message;
@@ -81,6 +87,7 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
         }
 
         courseRabbitTemplate.convertAndSend(exchange, routingKey, payload, message -> {
+            // Consistency: set content type and encoding even for immediate messages
             message.getMessageProperties().setContentType("application/json");
             message.getMessageProperties().setContentEncoding(StandardCharsets.UTF_8.name());
             return message;
