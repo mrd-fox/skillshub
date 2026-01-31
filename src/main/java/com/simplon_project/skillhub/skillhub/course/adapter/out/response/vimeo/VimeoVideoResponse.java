@@ -11,21 +11,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record VimeoVideoResponse(
-        // Core identity / links
+
         String uri,
         String name,
         String type,
         String link,
         @JsonProperty("player_embed_url")
         String playerEmbedUrl,
+        String h, // embed hash (for unlisted/private videos)
 
-        // Media metadata
+
         Long duration,
         Integer width,
         Integer height,
         Long size,
 
-        // Processing / availability
+
         String status,
 
         @JsonProperty("is_playable")
@@ -34,14 +35,14 @@ public record VimeoVideoResponse(
         @JsonProperty("has_audio")
         Boolean hasAudio,
 
-        // Nested objects we actually use
+
         Pictures pictures,
         Upload upload,
         Transcode transcode,
         Play play,
         ReviewPage reviewPage,
 
-        // Error payload (may be null)
+
         ErrorVimeo error
 
 ) {

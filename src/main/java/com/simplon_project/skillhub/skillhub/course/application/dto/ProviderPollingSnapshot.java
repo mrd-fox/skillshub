@@ -11,6 +11,7 @@ public record ProviderPollingSnapshot(
         Integer height,
         Long sizeBytes,
         String format,
+        String embedHash,
         String errorMessage
 ) {
 

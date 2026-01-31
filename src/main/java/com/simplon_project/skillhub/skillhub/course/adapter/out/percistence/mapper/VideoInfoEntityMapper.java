@@ -28,6 +28,7 @@ public class VideoInfoEntityMapper {
                 entity.getWidth(),
                 entity.getHeight(),
                 entity.getThumbnailUrl(),
+                entity.getEmbedHash(),
                 entity.getErrorMessage(),
                 entity.getStatus()
         );
@@ -57,6 +58,7 @@ public class VideoInfoEntityMapper {
                 .width(domain.width())
                 .height(domain.height())
                 .thumbnailUrl(domain.thumbnailUrl())
+                .embedHash(domain.embedHash())
                 .errorMessage(domain.errorMessage())
                 .status(domain.status())
                 .build();

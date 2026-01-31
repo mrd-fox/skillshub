@@ -284,6 +284,12 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
             format = response.type();
         }
 
+        // Extract embed hash (explicit field 'h' OR from player_embed_url)
+        String embedHash = response.h();
+        if (!hasText(embedHash) && hasText(response.playerEmbedUrl())) {
+            embedHash = extractHashFromEmbedUrl(response.playerEmbedUrl());
+        }
+
         String errorMessage = null;
         if (response.error() != null && hasText(response.error().message())) {
             errorMessage = response.error().message();
@@ -298,8 +304,26 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
                 height,
                 sizeBytes,
                 format,
+                embedHash,
                 errorMessage
         );
+    }
+
+    private String extractHashFromEmbedUrl(String url) {
+        if (url == null || !url.contains("?h=")) {
+            return null;
+        }
+        try {
+            int start = url.indexOf("?h=") + 3;
+            int end = url.indexOf("&", start);
+            if (end == -1) {
+                return url.substring(start);
+            }
+            return url.substring(start, end);
+        } catch (Exception e) {
+            log.debug("Failed to extract hash from embed url: {}", url);
+            return null;
+        }
     }
 
     private ProviderPollingStateEnum mapProviderState(VimeoVideoResponse response) {

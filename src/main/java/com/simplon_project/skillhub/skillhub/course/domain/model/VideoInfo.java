@@ -14,6 +14,7 @@ public record VideoInfo(
         Integer width,             // can be null
         Integer height,            // can be null
         String thumbnailUrl,       // can be null
+        String embedHash,          // can be null (used for unlisted Vimeo videos)
         String errorMessage,       // can be null
         VideoStatusEnum status     // required
 ) {
@@ -35,6 +36,7 @@ public record VideoInfo(
                 .width(this.width)
                 .height(this.height)
                 .thumbnailUrl(this.thumbnailUrl)
+                .embedHash(this.embedHash)
                 .errorMessage(null)
                 .status(VideoStatusEnum.PROCESSING)
                 .build();
@@ -50,7 +52,8 @@ public record VideoInfo(
             Integer width,
             Integer height,
             String format,
-            Long size
+            Long size,
+            String embedHash
     ) {
         requireStatus(VideoStatusEnum.PROCESSING, "mark ready");
         requireValidSourceUri(this.sourceUri);
@@ -65,6 +68,7 @@ public record VideoInfo(
                 .width(width != null ? width : this.width)
                 .height(height != null ? height : this.height)
                 .thumbnailUrl(thumbnailUrl != null ? thumbnailUrl : this.thumbnailUrl)
+                .embedHash(embedHash != null ? embedHash : this.embedHash)
                 .errorMessage(null)
                 .status(VideoStatusEnum.READY)
                 .build();
@@ -91,6 +95,7 @@ public record VideoInfo(
                 .width(this.width)
                 .height(this.height)
                 .thumbnailUrl(this.thumbnailUrl)
+                .embedHash(this.embedHash)
                 .errorMessage(errorMessage)
                 .status(VideoStatusEnum.FAILED)
                 .build();
@@ -119,6 +124,7 @@ public record VideoInfo(
                 .width(this.width)
                 .height(this.height)
                 .thumbnailUrl(this.thumbnailUrl)
+                .embedHash(this.embedHash)
                 .errorMessage(finalError)
                 .status(VideoStatusEnum.EXPIRED)
                 .build();

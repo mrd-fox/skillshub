@@ -48,6 +48,9 @@ public class VideoEntity extends AbstractBaseEntity {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @Column(name = "embed_hash", length = 255)
+    private String embedHash;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

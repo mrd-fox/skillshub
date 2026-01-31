@@ -60,7 +60,8 @@ public class EnqueueVideoPollingRequestRabbitAdapter implements EnqueueVideoPoll
                 null, // duration
                 null, // width
                 null, // height
-                null  // thumbnailUrl
+                null, // thumbnailUrl
+                null  // embedHash
         );
 
         String routingKey = (delayMs > 0)

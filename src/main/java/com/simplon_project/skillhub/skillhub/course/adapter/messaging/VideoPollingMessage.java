@@ -16,9 +16,9 @@ public record VideoPollingMessage(
         Long duration,
         Integer width,
         Integer height,
-        String thumbnailUrl
+        String thumbnailUrl,
+        String embedHash
 ) {
-
     public VideoPollingMessage {
         Objects.requireNonNull(videoId, "videoId must not be null");
         Objects.requireNonNull(enqueuedAt, "enqueuedAt must not be null");
@@ -32,7 +32,7 @@ public record VideoPollingMessage(
     }
 
     public static VideoPollingMessage firstAttempt(String videoId) {
-        return new VideoPollingMessage(videoId, 0, Instant.now(), null, null, null, null, null);
+        return new VideoPollingMessage(videoId, 0, Instant.now(), null, null, null, null, null, null);
     }
 
     public VideoPollingMessage nextAttempt(
@@ -40,7 +40,8 @@ public record VideoPollingMessage(
             Long currentDuration,
             Integer currentWidth,
             Integer currentHeight,
-            String currentThumbnailUrl
+            String currentThumbnailUrl,
+            String currentEmbedHash
     ) {
         return new VideoPollingMessage(
                 this.videoId,
@@ -50,7 +51,8 @@ public record VideoPollingMessage(
                 currentDuration != null ? currentDuration : this.duration,
                 currentWidth != null ? currentWidth : this.width,
                 currentHeight != null ? currentHeight : this.height,
-                currentThumbnailUrl != null ? currentThumbnailUrl : this.thumbnailUrl
+                currentThumbnailUrl != null ? currentThumbnailUrl : this.thumbnailUrl,
+                currentEmbedHash != null ? currentEmbedHash : this.embedHash
         );
     }
 }

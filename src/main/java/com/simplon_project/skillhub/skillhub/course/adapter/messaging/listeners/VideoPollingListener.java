@@ -115,7 +115,8 @@ public class VideoPollingListener {
                         coalesce(snapshot.width(), message.width()),
                         coalesce(snapshot.height(), message.height()),
                         snapshot.format(),
-                        coalesce(snapshot.sizeBytes(), message.size())
+                        coalesce(snapshot.sizeBytes(), message.size()),
+                        coalesce(snapshot.embedHash(), message.embedHash())
                 );
                 saveVideoInfoPort.save(ready);
                 log.info("Video marked READY: videoId={}", message.videoId());
@@ -136,13 +137,14 @@ public class VideoPollingListener {
                     snapshot.durationSeconds(),
                     snapshot.width(),
                     snapshot.height(),
-                    snapshot.thumbnailUrl()
+                    snapshot.thumbnailUrl(),
+                    snapshot.embedHash()
             );
             enqueueNext(next);
             log.info("Video still processing -> re-enqueued: videoId={} attempt={}", next.videoId(), next.attempt());
 
         } catch (VideoProviderPollingException ex) {
-            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null);
+            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null, null);
             enqueueNext(next);
             log.warn(
                     "Provider polling failed -> re-enqueued: videoId={} attempt={} err={}",
@@ -151,7 +153,7 @@ public class VideoPollingListener {
                     ex.getMessage()
             );
         } catch (Exception ex) {
-            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null);
+            VideoPollingMessage next = message.nextAttempt(null, null, null, null, null, null);
             enqueueNext(next);
             log.error("Unexpected polling error -> re-enqueued: videoId={} attempt={}", next.videoId(), next.attempt(), ex);
         }

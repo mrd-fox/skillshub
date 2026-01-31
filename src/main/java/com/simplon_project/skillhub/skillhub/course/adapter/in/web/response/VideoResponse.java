@@ -9,6 +9,8 @@ public record VideoResponse(
         Integer width,
         Integer height,
         String thumbnailUrl,
+        String embedHash,
         String errorMessage,
         String status
-) {}
+) {
+}

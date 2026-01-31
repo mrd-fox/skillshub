@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class VideoResponseMapper {
-    
+
     public static VideoResponse mapVideoInfoToResponse(VideoInfo video) {
         if (video == null) {
             return null;
@@ -21,6 +21,7 @@ public class VideoResponseMapper {
                 video.width(),
                 video.height(),
                 video.thumbnailUrl(),
+                video.embedHash(),
                 video.errorMessage(),
                 video.status().name()
         );

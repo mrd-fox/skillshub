@@ -106,6 +106,7 @@ public class VideoRepositoryAdapter implements
         entity.setHeight(videoInfo.height());
         entity.setDuration(videoInfo.duration());
         entity.setThumbnailUrl(videoInfo.thumbnailUrl());
+        entity.setEmbedHash(videoInfo.embedHash());
         entity.setErrorMessage(videoInfo.errorMessage());
         entity.setStatus(videoInfo.status());
 

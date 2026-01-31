@@ -17,5 +17,7 @@ databaseChangeLog:
       file: db/changelog/course/1.1.x/1.0.1_add_section_columns.yaml
   - include:
       file: db/changelog/course/1.1.x/1.0.1_videos_add_columns.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_embed_hash_to_videos.yaml
 
       
