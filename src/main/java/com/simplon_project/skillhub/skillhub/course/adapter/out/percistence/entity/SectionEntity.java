@@ -37,6 +37,9 @@ public class SectionEntity extends AbstractBaseEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
+    @Column(name = "position", nullable = false)
+    private Integer position;
+
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     @Builder.Default

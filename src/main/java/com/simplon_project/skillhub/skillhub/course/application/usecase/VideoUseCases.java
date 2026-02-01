@@ -1,65 +1,172 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.messaging.events.VideoMetadataExtractedEvent;
-import com.simplon_project.skillhub.skillhub.course.adapter.messaging.events.VideoUploadedEvent;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
-import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.ProcessExtractedMetadataPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.ProcessUploadVideoPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.ChapterRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.VideoRepository;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.application.dto.UploadInstructions;
+import com.simplon_project.skillhub.skillhub.course.application.dto.VideoUploadInit;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.ConfirmVideoUploadPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.InitVideoInChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.ConfirmVideoUploadCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitProviderUploadCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitVideoCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.chapter.LoadChapterForVideoOpsPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.CreatePendingVideoForChapterPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.EnqueueVideoPollingRequestPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
+import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class VideoUseCases implements ProcessUploadVideoPort, ProcessExtractedMetadataPort {
+public class VideoUseCases implements InitVideoInChapterPort, ConfirmVideoUploadPort {
 
-    private final ChapterRepository chapterRepository;
-    private final VideoRepository videoRepository;
+    public static final String PROVIDER_NAME = "VIMEO";
+    public static final String DESCRIPTION = "";
+    public static final String PRIVACY = "unlisted";
+    public static final String DEFAULT_TITLE = "";
+
+    private final LoadChapterForVideoOpsPort loadChapterForVideoOpsPort;
+    private final CreatePendingVideoForChapterPort createPendingVideoPort;
+    private final VideoProviderInitPort videoProviderInitPort;
+
+    private final SaveVideoInfoPort saveVideoInfoPort;
+    private final EnqueueVideoPollingRequestPort enqueueVideoPollingRequestPort;
 
     @Override
-    public void processUploadedVideo(VideoUploadedEvent event) {
+    @Transactional("courseTxManager")
+    public VideoUploadInit init(InitVideoCommand command) {
 
-        var courseId = EntityId.fromString(event.courseId());
-        var chapterId = EntityId.fromString(event.chapterId());
-        var videoId = EntityId.fromString(event.videoId());
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
 
-        var chapter = chapterRepository.findByIdWithSectionAndCourse(chapterId)
-                .orElseThrow(() -> new IllegalStateException("Chapter not found"));
+        var chapter = loadChapterForVideoOpsPort.loadChapterForVideoOps(Id.of(command.chapterId()))
+                .orElseThrow(() -> new IllegalStateException("Chapter not found: " + command.chapterId()));
 
-        if (!chapter.getSection().getCourse().getId().equals(courseId)) {
+        var fetchedCourseId = extractCourseIdFromDomain(chapter);
+
+        if (!(Id.of(command.courseId())).equals(fetchedCourseId)) {
             throw new IllegalStateException(
-                    "Chapter %s does not belong to course %s".formatted(chapterId, courseId)
+                    "Chapter %s does not belong to course %s".formatted(command.chapterId(), command.courseId())
             );
         }
-        var video = VideoEntity.builder()
-                .videoId(videoId)
-                .storageKey(event.storageKey())
-                .format(event.format())
-                .size(event.sizeBytes())
-                .status(VideoStatusEnum.UPLOADED)
-                .chapter(chapter)
-                .build();
-        videoRepository.save(video);
+
+        if (chapter.getVideo() != null) {
+            throw new IllegalStateException("Chapter already has a video. Replace flow is not implemented yet.");
+        }
+
+        var title = normalizeNullable(chapter.getTitle());
+        if (title == null) {
+            title = DEFAULT_TITLE;
+        }
+
+        var providerCommand = new InitProviderUploadCommand(
+                command.sizeBytes(),
+                title,
+                DESCRIPTION,
+                PRIVACY
+        );
+
+        var providerResult = videoProviderInitPort.initTusUpload(providerCommand);
+
+        var savedVideo = createPendingVideoPort.createPendingVideo(
+                chapter.getId(),
+                providerResult.sourceUri()
+        );
+
+        var expiresAt = providerResult.expiresAt();
+        if (expiresAt == null) {
+            expiresAt = Instant.now().plus(java.time.Duration.ofHours(1));
+        }
+
+        return new VideoUploadInit(
+                savedVideo,
+                new UploadInstructions(
+                        PROVIDER_NAME,
+                        providerResult.uploadUrl(),
+                        expiresAt
+                )
+        );
     }
 
+
+// -----------------------
+    // CONFIRM
+    // -----------------------
+
     @Override
-    public void processVideoMetadata(VideoMetadataExtractedEvent event) {
+    @Transactional("courseTxManager")
+    public VideoInfo confirm(ConfirmVideoUploadCommand command) {
 
-        var videoId = EntityId.fromString(event.videoId());
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
 
-        var video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalStateException("Video not found: " + videoId));
+        var courseId = Id.of(command.courseId());
+        var chapterId = Id.of(command.chapterId());
 
-        video.setWidth(event.width());
-        video.setHeight(event.height());
-        video.setDuration(event.duration());
-        video.setStatus(VideoStatusEnum.valueOf(event.status()));
+        var chapter = loadChapterForVideoOpsPort.loadChapterForVideoOps(chapterId)
+                .orElseThrow(() -> new IllegalStateException("Chapter not found: " + command.chapterId()));
 
-        videoRepository.save(video);
+        var fetchedCourseId = extractCourseIdFromDomain(chapter);
+
+        if (!courseId.equals(fetchedCourseId)) {
+            throw new IllegalStateException(
+                    "Chapter %s does not belong to course %s".formatted(command.chapterId(), command.courseId())
+            );
+        }
+
+        var current = chapter.getVideo();
+        if (current == null) {
+            throw new IllegalStateException("No initialized video for chapter " + command.chapterId());
+        }
+        if (current.sourceUri() == null || current.sourceUri().isBlank()) {
+            throw new IllegalStateException("Video has no sourceUri, cannot confirm upload for chapter " + command.chapterId());
+        }
+
+        // Domain transition: PENDING -> PROCESSING (and validates sourceUri)
+        var processing = current.markProcessing();
+
+        var saved = saveVideoInfoPort.save(processing);
+
+        // First poll is immediate (attempt=0). requestedAt=now. delayMs=0.
+        enqueueVideoPollingRequestPort.enqueue(
+                saved.id().asString(),
+                1,
+                Instant.now(),
+                0L
+        );
+
+        return saved;
+    }
+
+    // -----------------------
+    // Helpers
+    // -----------------------
+    private static Id extractCourseIdFromDomain(Chapter chapter) {
+        if (chapter.getSection() == null
+                || chapter.getSection().getCourse() == null
+                || chapter.getSection().getCourse().getId() == null) {
+            throw new IllegalStateException("Chapter is missing section/course relation (data integrity issue)");
+        }
+        return chapter.getSection().getCourse().getId();
+    }
+
+    private static String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed;
     }
 }

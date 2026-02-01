@@ -11,4 +11,13 @@ databaseChangeLog:
       file: db/changelog/course/1.1.x/1.0.1_add_created_updated_at_section_chapter.yaml
   - include:
       file: db/changelog/course/1.1.x/1.0.1_cleanup_capters_and_videos.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_rename_course_columns.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_section_columns.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_videos_add_columns.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_embed_hash_to_videos.yaml
+
       

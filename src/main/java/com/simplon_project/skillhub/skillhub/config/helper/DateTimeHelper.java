@@ -1,9 +1,12 @@
 package com.simplon_project.skillhub.skillhub.config.helper;
 
+import org.springframework.modulith.NamedInterface;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+@NamedInterface
 public final class DateTimeHelper {
     private DateTimeHelper() {
     }

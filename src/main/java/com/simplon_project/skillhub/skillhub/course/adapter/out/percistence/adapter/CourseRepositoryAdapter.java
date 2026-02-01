@@ -1,13 +1,17 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.adapter;
 
 
+import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.*;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.CourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseStructurePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseWithVideoPort;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
+import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Section;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -20,7 +24,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CourseRepositoryAdapter implements CourseRepository {
+public class CourseRepositoryAdapter implements CourseRepository, LoadCourseStructurePort, LoadCourseWithVideoPort {
 
     private final JpaCourseRepository courseJpaRepository;
 
@@ -212,5 +216,25 @@ public class CourseRepositoryAdapter implements CourseRepository {
                 });
             }
         }
+    }
+
+    @Override
+    public Course loadStructure(Id courseId) {
+        var entityId = EntityId.fromString(courseId.asString());
+
+        var entity = courseJpaRepository.findByIdWithPublicTree(entityId)
+                .orElseThrow(() -> new CourseNotFoundException(courseId));
+
+        return CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext());
+    }
+
+    @Override
+    public Course loadWithVideo(Id courseId) {
+        var entityId = EntityId.fromString(courseId.asString());
+
+        var entity = courseJpaRepository.findByIdWithTree(entityId)
+                .orElseThrow(() -> new CourseNotFoundException(courseId));
+
+        return CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext());
     }
 }

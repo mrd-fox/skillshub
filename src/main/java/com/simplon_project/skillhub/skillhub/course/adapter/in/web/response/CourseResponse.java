@@ -13,12 +13,11 @@ public record CourseResponse(
         String id,
         String title,
         String description,
-//      List<String> keyWords,
         CourseStatusEnum status,
         List<SectionResponse> sections,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-        //user
+
 
 ) {
 }

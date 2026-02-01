@@ -23,6 +23,7 @@ public class SectionEntityMapper {
         var domain = Section.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())
+                .position(entity.getPosition())
                 .build();
 
         context.storeMappedInstance(entity, domain);
@@ -30,6 +31,7 @@ public class SectionEntityMapper {
         domain.setChapters(ChapterEntityMapper.mapToDomains(entity.getChapters(), context));
         return domain;
     }
+
 
     public static Set<Section> mapToDomains(Set<SectionEntity> entities, CycleAvoidingMappingContext context) {
 
@@ -46,6 +48,7 @@ public class SectionEntityMapper {
         var entity = SectionEntity.builder()
                 .sectionId(EntityId.of(UUID.fromString(domain.getId().asString())))
                 .title(domain.getTitle())
+                .position(domain.getPosition())
                 .build();
 
         context.storeMappedInstance(domain, entity);
@@ -65,4 +68,32 @@ public class SectionEntityMapper {
                 .map(d -> mapToEntity(d, context))
                 .collect(Collectors.toSet());
     }
+
+
+    /**
+     * Dedicated lightweight mapping (no deep graph):
+     * - maps only section fields + course (light)
+     * - does NOT map chapters to avoid cycles and unnecessary loading
+     */
+    public static Section mapToDomainLight(SectionEntity entity, CycleAvoidingMappingContext context) {
+        if (entity == null) return null;
+
+        Section existing = context.getMappedInstance(entity, Section.class);
+        if (existing != null) return existing;
+
+        var domain = Section.builder()
+                .id(Id.of(entity.getId().toString()))
+                .title(entity.getTitle())
+                .position(entity.getPosition())
+                .build();
+
+        context.storeMappedInstance(entity, domain);
+
+        // Course is required for init-video validation (courseId ownership)
+        domain.setCourse(CourseEntityMapper.mapToDomainLight(entity.getCourse(), context));
+
+        return domain;
+    }
+
+
 }

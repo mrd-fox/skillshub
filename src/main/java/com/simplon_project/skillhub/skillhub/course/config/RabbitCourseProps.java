@@ -10,7 +10,10 @@ import org.springframework.stereotype.Component;
 @Getter
 @Setter
 public class RabbitCourseProps {
+    // Exchange used by the course-service
     private String exchange;
+
+    // Legacy queues/keys (storage-service events)
     private String uploadRoutingKey;
     private String metadataRoutingKey;
     private String uploadedQueue;

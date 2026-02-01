@@ -56,24 +56,5 @@ public class StorageController {
         return ResponseMediaMapper.mapToMediaResponse(completeUploadPort.complete(command));
     }
 
-//    @Operation(
-//            summary = "Fetch object metadata",
-//            description = "Pass-through endpoint returning metadata from MinIO for the given object key"
-//    )
-//    @ApiResponse(responseCode = "200", description = "Metadata retrieved")
-//    @PostMapping("/objects/metadata")
-//    public ObjectMetadataResponse getMetadataByQuery(@RequestBody GetMetadataRequest request) {
-//        return ResponseMediaMapper.mapToResponse(
-//                getObjectMetadataPort.get(request.mapToCommand())
-//        );
-//    }
-
-//    @GetMapping("/media/access")
-//    public String access(
-//            @RequestParam String storageKey,
-//            @RequestParam(defaultValue = "900") int ttlSeconds
-//    ) {
-//        return accessMediaPort.generateReadUrl(storageKey, ttlSeconds);
-//    }
 }
 

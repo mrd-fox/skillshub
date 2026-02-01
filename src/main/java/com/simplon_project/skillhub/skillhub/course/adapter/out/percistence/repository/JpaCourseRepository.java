@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,4 +25,37 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 where c.courseId = :id
             """)
     Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
+
+    // =========================
+    // Public catalog - LIST (metadata only)
+    // =========================
+    @Query("""
+                select c
+                from CourseEntity c
+                order by c.createdAt desc
+            """)
+    List<CourseEntity> findAllForPublicCatalog();
+
+    // =========================
+    // Public catalog - DETAIL (sections + chapters, NO video)
+    // =========================
+    @Query("""
+                select distinct c
+                from CourseEntity c
+                left join fetch c.sections s
+                left join fetch s.chapters ch
+                where c.courseId = :id
+            """)
+    Optional<CourseEntity> findByIdWithPublicTree(@Param("id") EntityId id);
+
+    // =========================
+    // Existing query used elsewhere (kept as-is)
+    // =========================
+    @Query("""
+                select c
+                from CourseEntity c
+                where c.externalUserId = :externalUserId
+                order by c.createdAt desc
+            """)
+    List<CourseEntity> findByExternalUserId(@Param("externalUserId") String externalUserId);
 }

@@ -1,18 +1,16 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.response;
 
-import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
-
 public record VideoResponse(
         String id,
-        String key,
-//        LocalDateTime createdAt,
-//        LocalDateTime updatedAt,
+        String sourceUri,
         Long duration,
         String format,
-        long size,
-        int width,
-        int height,
-        //todo map to enum response
-        VideoStatusEnum status
+        Long size,
+        Integer width,
+        Integer height,
+        String thumbnailUrl,
+        String embedHash,
+        String errorMessage,
+        String status
 ) {
 }

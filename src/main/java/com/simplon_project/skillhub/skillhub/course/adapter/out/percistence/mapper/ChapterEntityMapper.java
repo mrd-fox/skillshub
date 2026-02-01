@@ -7,7 +7,6 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.enti
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -20,14 +19,12 @@ public class ChapterEntityMapper {
         var existing = context.getMappedInstance(entity, Chapter.class);
         if (existing != null) return existing;
 
-        var zone = ZoneId.systemDefault();
         var domain = Chapter.builder()
                 .id(Id.of(entity.getId().toString()))
                 .title(entity.getTitle())
                 .position(entity.getPosition())
                 .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
-                .video(entity.getVideo() != null ? VideoInfoEntityMapper.mapToDomain(entity.getVideo(), context) : null)
                 .build();
         context.storeMappedInstance(entity, domain);
         domain.setVideo(VideoInfoEntityMapper.mapToDomain(entity.getVideo(), context));
@@ -61,5 +58,38 @@ public class ChapterEntityMapper {
         return domains.stream()
                 .map(d -> mapToEntity(d, context))
                 .collect(Collectors.toSet());
+    }
+
+    // ====== NEW METHOD FOR INIT VIDEO (ADDED) ======
+
+    /**
+     * Dedicated mapping for "init video" use case:
+     * - includes Section and Course (light) so use case can validate course ownership
+     * - avoids deep graph mapping to prevent cycles and lazy initialization issues
+     */
+    public static Chapter mapToDomainWithSectionAndCourseLight(ChapterEntity entity, CycleAvoidingMappingContext context) {
+        if (entity == null) return null;
+
+        var existing = context.getMappedInstance(entity, Chapter.class);
+        if (existing != null) return existing;
+
+        var domain = Chapter.builder()
+                .id(Id.of(entity.getId().toString()))
+                .title(entity.getTitle())
+                .position(entity.getPosition())
+                .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
+                .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
+                .build();
+
+        context.storeMappedInstance(entity, domain);
+
+        // Video (optional) - already fetched by LEFT JOIN FETCH
+        domain.setVideo(VideoInfoEntityMapper.mapToDomain(entity.getVideo(), context));
+
+        // Section + Course (light) - required for courseId validation in init flow
+        // Replace these calls with your existing mappers if names differ.
+        domain.setSection(SectionEntityMapper.mapToDomainLight(entity.getSection(), context));
+
+        return domain;
     }
 }

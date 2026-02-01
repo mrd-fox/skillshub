@@ -1,24 +1,37 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseEntityDetailMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseSummaryMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.FindCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.SaveCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCourseDetailPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCoursesPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
+import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseDetail;
+import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseSummary;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 
 @Component
 @Transactional("courseTxManager")
-public class CourseAdapter implements SaveCoursePort, FindCoursePort {
+public class CourseAdapter implements
+        SaveCoursePort,
+        FindCoursePort,
+        LoadPublicCoursesPort,
+        LoadPublicCourseDetailPort {
 
 
     private final JpaCourseRepository courseJpaRepository;
@@ -48,16 +61,6 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
 
 
     @Override
-    public Course find(Id id) {
-        var courseEntity = courseJpaRepository.findById(EntityId.fromString(id.asString()))
-                .orElseThrow(() -> new CourseNotFoundException(id));
-
-        return CourseEntityMapper.mapToDomain(courseEntity, new CycleAvoidingMappingContext());
-
-    }
-
-
-    @Override
     public Course findByTitle(Course course) {
         String normalizedTitle = course.getTitle().replaceAll("\\s+", "").toLowerCase();
 
@@ -67,4 +70,33 @@ public class CourseAdapter implements SaveCoursePort, FindCoursePort {
 
         return existingCourse != null ? CourseEntityMapper.mapToDomain(existingCourse, new CycleAvoidingMappingContext()) : null;
     }
+
+    @Override
+    public List<Course> findByExternalUserId(String externalUserId) {
+
+        List<CourseEntity> entities =
+                courseJpaRepository.findByExternalUserId(externalUserId);
+
+        return CourseEntityMapper.mapToDomain(entities, new CycleAvoidingMappingContext());
+    }
+
+    // =========================
+    // PUBLIC CATALOG
+    // =========================
+
+    @Override
+    public List<PublicCourseSummary> loadPublicCourses() {
+        return courseJpaRepository.findAllForPublicCatalog().stream()
+                .map(PublicCourseSummaryMapper::mapToDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<PublicCourseDetail> loadPublicCourseDetail(Id courseId) {
+        return courseJpaRepository.findByIdWithPublicTree(
+                        EntityId.fromString(courseId.asString())
+                )
+                .map(PublicCourseEntityDetailMapper::mapToDomain);
+    }
+
 }

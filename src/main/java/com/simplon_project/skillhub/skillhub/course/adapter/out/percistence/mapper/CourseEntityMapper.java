@@ -8,6 +8,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.enti
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 
+import java.util.List;
 import java.util.UUID;
 
 
@@ -24,6 +25,7 @@ public class CourseEntityMapper {
                 .description(entity.getDescription())
                 .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
+                .externalUserId(entity.getExternalUserId())
                 .build();
         context.storeMappedInstance(entity, domain);
 
@@ -42,6 +44,7 @@ public class CourseEntityMapper {
                 .description(domain.getDescription())
                 .price(domain.getPrice())
                 .status(domain.getStatus())
+                .externalUserId(domain.getExternalUserId())
                 .build();
 
         context.storeMappedInstance(domain, entity);
@@ -54,5 +57,46 @@ public class CourseEntityMapper {
         entity.setSections(sectionEntities);
 
         return entity;
+    }
+
+    public static List<Course> mapToDomain(
+            List<CourseEntity> entities,
+            CycleAvoidingMappingContext context
+    ) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+
+        return entities.stream()
+                .map(entity -> mapToDomain(entity, context))
+                .toList();
+    }
+
+     /* ============================================================
+       LIGHT MAPPING – FOR INIT VIDEO / READ-ONLY USE CASES
+       ============================================================ */
+
+    /**
+     * Lightweight mapping:
+     * - maps only identity + minimal fields
+     * - DOES NOT map sections
+     * - safe for init-video ownership validation
+     */
+    public static Course mapToDomainLight(CourseEntity entity, CycleAvoidingMappingContext context) {
+        if (entity == null) return null;
+
+        var existing = context.getMappedInstance(entity, Course.class);
+        if (existing != null) return existing;
+
+        var domain = Course.builder()
+                .id(Id.of(entity.getId().toString()))
+                .status(entity.getStatus())
+                .title(entity.getTitle())
+                .externalUserId(entity.getExternalUserId())
+                .build();
+
+        context.storeMappedInstance(entity, domain);
+
+        return domain;
     }
 }

@@ -8,12 +8,18 @@ import java.util.Set;
 
 public final class ChapterResponseMapper {
     public static ChapterResponse mapToChapterResponse(Chapter chapter) {
+
         return ChapterResponse.builder()
                 .id(chapter.getId().asString())
                 .title(chapter.getTitle())
+                .position(chapter.getPosition())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())
-                .video(chapter.getVideo() != null ? VideoResponseMapper.mapToVideoResponse(chapter.getVideo()) : null)
+                .video(
+                        chapter.getVideo() != null
+                                ? VideoResponseMapper.mapVideoInfoToResponse(chapter.getVideo())
+                                : null
+                )
                 .build();
     }
 

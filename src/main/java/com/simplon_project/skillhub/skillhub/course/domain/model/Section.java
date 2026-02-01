@@ -13,6 +13,7 @@ import java.util.*;
 public class Section extends Base {
     private Course course;
     private String title;
+    Integer position;
     @Builder.Default
     private Set<Chapter> chapters = new HashSet<>();
 

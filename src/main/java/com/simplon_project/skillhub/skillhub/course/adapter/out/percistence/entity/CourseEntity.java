@@ -48,7 +48,11 @@ public class CourseEntity extends AbstractBaseEntity {
     @Enumerated(EnumType.STRING)
     private CourseStatusEnum status;
 
+    @Column(name = "external_user_id")
+    private String externalUserId;
+
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
     @Builder.Default
     private Set<SectionEntity> sections = new HashSet<>();
 

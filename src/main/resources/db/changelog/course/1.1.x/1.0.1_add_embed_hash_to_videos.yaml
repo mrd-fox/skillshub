@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-160-video-add-embed-hash
+      author: DARDE Marina
+      changes:
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: embed_hash
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: videos
+            columnName: embed_hash

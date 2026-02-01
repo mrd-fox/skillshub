@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-160-videos-add-source-uri-thumbnail-error
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: source_uri
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: thumbnail_url
+                  type: TEXT
+              - column:
+                  name: error_message
+                  type: TEXT
+
+        - addUniqueConstraint:
+            tableName: videos
+            columnNames: source_uri
+            constraintName: uk__videos__source_uri
+
+      rollback:
+        - dropUniqueConstraint:
+            tableName: videos
+            constraintName: uk__videos__source_uri
+        - dropColumn:
+            tableName: videos
+            columnName: error_message
+        - dropColumn:
+            tableName: videos
+            columnName: thumbnail_url
+        - dropColumn:
+            tableName: videos
+            columnName: source_uri
