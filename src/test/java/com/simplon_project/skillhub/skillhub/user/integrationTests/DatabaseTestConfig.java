@@ -9,8 +9,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public abstract class DatabaseTestConfig {
 
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
-            .withDatabaseName("testdb")
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("skillshub_test")
             .withUsername("test")
             .withPassword("test");
 
@@ -21,13 +21,27 @@ public abstract class DatabaseTestConfig {
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
 
-        // Si tu as plusieurs datasources, on override ici uniquement celle de user-service
-        registry.add("spring.user-datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.user-datasource.username", postgres::getUsername);
-        registry.add("spring.user-datasource.password", postgres::getPassword);
+        // Bind ALL datasources to the same Postgres for integration tests
+        registry.add("spring.datasource.course.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.course.username", postgres::getUsername);
+        registry.add("spring.datasource.course.password", postgres::getPassword);
+
+        registry.add("spring.datasource.storage.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.storage.username", postgres::getUsername);
+        registry.add("spring.datasource.storage.password", postgres::getPassword);
+
+        registry.add("spring.datasource.user.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.user.username", postgres::getUsername);
+        registry.add("spring.datasource.user.password", postgres::getPassword);
+
+        // Disable Rabbit listeners in tests (avoids missing queue / broker issues)
+        registry.add("course.rabbitmq.video-polling.enabled", () -> "false");
+        registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> "false");
+        registry.add("spring.rabbitmq.listener.direct.auto-startup", () -> "false");
+
+        // If you have MinIO/Vimeo required properties, disable/neutralize
+        registry.add("minio.enabled", () -> "false");
+        registry.add("vimeo.enabled", () -> "false");
     }
 }

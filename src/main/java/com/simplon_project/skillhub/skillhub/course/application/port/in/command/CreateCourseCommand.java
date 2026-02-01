@@ -36,8 +36,8 @@ public record CreateCourseCommand(
 
         Set<UserRole> roles = parseRoles(rawRoles);
 
-        if (!roles.contains(UserRole.TUTOR)) {
-            throw new IllegalArgumentException("Only TUTOR can create a course");
+        if (!roles.contains(UserRole.TUTOR) && !roles.contains(UserRole.ADMIN)) {
+            throw new IllegalArgumentException("Only TUTOR or ADMIN can create a course");
         }
 
         // --- payload ---
@@ -46,7 +46,7 @@ public record CreateCourseCommand(
         }
 
         if (price == null || price < 0) {
-           price = 0L;
+            price = 0L;
         }
 
         if (sections == null) {

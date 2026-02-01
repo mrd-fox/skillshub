@@ -1,183 +1,204 @@
-# e-learning-monolith-back
+# 🎓 SkillsHub — Backend Platform
 
-[//]: # (## Getting started)
+![Java](https://img.shields.io/badge/Java-21-007396)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.2-6DB33F)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-black)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-[//]: # ()
+---
 
-[//]: # (To make it easy for you to get started with GitLab, here's a list of recommended next steps.)
+## Overview
 
-[//]: # ()
+**SkillsHub** is an online learning platform where students enroll in courses created and managed by tutors.
 
-[//]: # (Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom]&#40;#editing-this-readme&#41;!)
+This repository contains the **modular monolithic backend**, designed with **strict hexagonal architecture (Ports &
+Adapters)**.  
+The codebase is structured to ensure **clear separation of concerns**, long-term maintainability, and future
+scalability.
 
-[//]: # ()
+---
 
-[//]: # (## Add your files)
+## Key Functionalities
 
-[//]: # ()
+### Course Management
 
-[//]: # (- [ ] [Create]&#40;https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file&#41; or [upload]&#40;https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file&#41; files)
+- Course creation, update, and publication
+- Structured content: sections and chapters with ordering
+- Access rules enforced at application level (role-based)
 
-[//]: # (- [ ] [Add files using the command line]&#40;https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line&#41; or push an existing Git repository with the following command:)
+### User Management
 
-[//]: # ()
+- Internal user profiles managed by the backend
+- Authentication delegated to an external IAM (Keycloak via Gateway)
+- Backend remains **IAM-agnostic**
 
-[//]: # (```)
+### Video Orchestration
 
-[//]: # (cd existing_repo)
+- Video metadata persisted in database
+- Upload handled externally (Vimeo)
+- Backend controls video lifecycle (`PENDING`, `PROCESSING`, `READY`, `FAILED`)
+- Asynchronous processing via message queues
 
-[//]: # (git remote add origin https://gitlab.com/dardemarina/e-learning-monolith-back.git)
+### Asynchronous Messaging
 
-[//]: # (git branch -M main)
+- Event-driven workflows using RabbitMQ
+- Delayed and retryable background processing
 
-[//]: # (git push -uf origin main)
+### Observability
 
-[//]: # (```)
+- Metrics exposed via Spring Boot Actuator
+- Prometheus scraping
+- Grafana dashboards
+- Centralized logging with Loki and Promtail
 
-[//]: # ()
+---
 
-[//]: # (## Integrate with your tools)
+## Architecture
 
-[//]: # ()
+The backend strictly follows **Hexagonal Architecture**.
 
-[//]: # (- [ ] [Set up project integrations]&#40;https://gitlab.com/dardemarina/e-learning-monolith-back/-/settings/integrations&#41;)
+    domain → pure business logic
+    application → use cases + ports
+    adapter → web, persistence, messaging
 
-[//]: # ()
+### Architectural Principles
 
-[//]: # (## Collaborate with your team)
+- Domain layer is framework-free
+- No JPA entities or web DTOs in use cases
+- Mapping handled exclusively by adapters
+- One use case per module, multiple input ports
+- Backend does **not** issue JWT tokens
 
-[//]: # ()
+---
 
-[//]: # (- [ ] [Invite team members and collaborators]&#40;https://docs.gitlab.com/ee/user/project/members/&#41;)
+## Technology Stack
 
-[//]: # (- [ ] [Create a new merge request]&#40;https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html&#41;)
+| Technology       | Purpose                               |
+|------------------|---------------------------------------|
+| Java 21          | Core language                         |
+| Spring Boot      | Application framework                 |
+| Spring Security  | Resource server (JWT validation only) |
+| PostgreSQL       | Relational persistence                |
+| Liquibase        | Database schema migrations            |
+| RabbitMQ         | Asynchronous messaging                |
+| Vimeo            | Video hosting                         |
+| Prometheus       | Metrics collection                    |
+| Grafana          | Monitoring dashboards                 |
+| Loki & Promtail  | Log aggregation                       |
+| Docker / Compose | Containerized environments            |
 
-[//]: # (- [ ] [Automatically close issues from merge requests]&#40;https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically&#41;)
+---
 
-[//]: # (- [ ] [Enable merge request approvals]&#40;https://docs.gitlab.com/ee/user/project/merge_requests/approvals/&#41;)
+## Database Strategy
 
-[//]: # (- [ ] [Set auto-merge]&#40;https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html&#41;)
+The backend uses **multiple PostgreSQL databases**, separated by functional responsibility:
 
-[//]: # ()
+- Course data
+- User profiles
+- Media metadata
 
-[//]: # (## Test and Deploy)
+This separation improves isolation, clarity, and future evolvability.
 
-[//]: # ()
+---
 
-[//]: # (Use the built-in continuous integration in GitLab.)
+## Environment & Deployment Modes
 
-[//]: # ()
+The backend supports multiple execution modes:
 
-[//]: # (- [ ] [Get started with GitLab CI/CD]&#40;https://docs.gitlab.com/ee/ci/quick_start/index.html&#41;)
+- **Local mode** — application runs locally
+- **Hybrid mode** — Gateway runs locally or in Docker
+- **Full Docker mode** — all components containerized
 
-[//]: # (- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing &#40;SAST&#41;]&#40;https://docs.gitlab.com/ee/user/application_security/sast/&#41;)
+Ports, credentials, and infrastructure endpoints are **fully driven by environment variables**.  
+No hard-coded configuration is required.
 
-[//]: # (- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy]&#40;https://docs.gitlab.com/ee/topics/autodevops/requirements.html&#41;)
+---
 
-[//]: # (- [ ] [Use pull-based deployments for improved Kubernetes management]&#40;https://docs.gitlab.com/ee/user/clusters/agent/&#41;)
+## Database Migrations
 
-[//]: # (- [ ] [Set up protected environments]&#40;https://docs.gitlab.com/ee/ci/environments/protected_environments.html&#41;)
+Database schema evolution is managed with **Liquibase**.
 
-[//]: # ()
+Migrations are executed via the **Makefile**, ensuring:
 
-[//]: # (***)
+- Consistent execution
+- Reproducible environments
+- Clear separation between services
 
-[//]: # ()
+---
 
-[//]: # (# Editing this README)
+## Observability & Monitoring
 
-[//]: # ()
+The application exposes operational data via:
 
-[//]: # (When you're ready to make this README your own, just edit this file and use the handy template below &#40;or feel free to structure it however you want - this is just a starting point!&#41;. Thanks to [makeareadme.com]&#40;https://www.makeareadme.com/&#41; for this template.)
+- Spring Boot Actuator endpoints
+- Prometheus-compatible metrics
+- Preconfigured Grafana dashboards
+- Centralized log aggregation (Loki)
 
-[//]: # ()
+This provides full visibility into application health, performance, and background processing.
 
-[//]: # (## Suggestions for a good README)
+---
 
-[//]: # ()
+## Security Model
 
-[//]: # (Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.)
+- Authentication is handled externally (Keycloak)
+- JWT tokens are **validated**, never issued, by the backend
+- Identity and roles are propagated by the Gateway
+- Backend remains decoupled from the IAM provider
 
-[//]: # ()
+---
 
-[//]: # (## Name)
+## CI/CD & Development Workflow
 
-[//]: # (Choose a self-explaining name for your project.)
+### Git Workflow
 
-[//]: # ()
+The project follows a **structured Git flow**:
 
-[//]: # (## Description)
+- `dev` is the **main development branch**
+- `main` represents **stable, deployable releases**
+- Feature branches are created from `dev`
 
-[//]: # (Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.)
+All integrations into `dev` are performed using **squash merge**, ensuring:
 
-[//]: # ()
+- One commit per feature or ticket
+- Clean and readable history
+- Easier traceability of changes
 
-[//]: # (## Badges)
+---
 
-[//]: # (On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.)
+### Continuous Integration & Code Quality
 
-[//]: # ()
+Continuous Integration is handled via **GitHub Actions**.
 
-[//]: # (## Visuals)
+On each Pull Request targeting the `dev` branch:
 
-[//]: # (Depending on what you are making, it can be a good idea to include screenshots or even a video &#40;you'll frequently see GIFs rather than actual videos&#41;. Tools like ttygif can help, but check out Asciinema for a more sophisticated method.)
+- The project is built
+- Automated tests are executed
+- **Static code analysis is performed using SonarCloud**
 
-[//]: # ()
+This guarantees that only validated and quality-checked code is merged into the development branch.
 
-[//]: # (## Installation)
+---
 
-[//]: # (Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.)
+### Delivery Model
 
-[//]: # ()
+- `dev` is used for ongoing development and integration
+- `main` is reserved for versioned, deployable states
+- Deployment is explicit and controlled, not automated
 
-[//]: # (## Usage)
+---
 
-[//]: # (Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.)
+## License
 
-[//]: # ()
+This project is licensed under the MIT License.  
+See the [LICENSE](LICENSE) file for details.
 
-[//]: # (## Support)
+---
 
-[//]: # (Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.)
+## Author
 
-[//]: # ()
-
-[//]: # (## Roadmap)
-
-[//]: # (If you have ideas for releases in the future, it is a good idea to list them in the README.)
-
-[//]: # ()
-
-[//]: # (## Contributing)
-
-[//]: # (State if you are open to contributions and what your requirements are for accepting them.)
-
-[//]: # ()
-
-[//]: # (For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.)
-
-[//]: # ()
-
-[//]: # (You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.)
-
-[//]: # ()
-
-[//]: # (## Authors and acknowledgment)
-
-[//]: # (Show your appreciation to those who have contributed to the project.)
-
-[//]: # ()
-
-[//]: # (## License)
-
-[//]: # (For open source projects, say how it is licensed.)
-
-[//]: # ()
-
-[//]: # (## Project status)
-
-[//]: # (If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.)
-
-# promtail + grafana logs
-
-to retrieve the logs you should get "{filename="/logs/app.log"}" in ui
+**Marina Darde**  
+Initial development  
+GitHub: https://github.com/mrd-fox/skillshub
