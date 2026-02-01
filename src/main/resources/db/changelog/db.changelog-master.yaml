@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/storage/changelog-storage-master.yaml
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/user/changelog-user-master.yaml
+      relativeToChangelogFile: false
