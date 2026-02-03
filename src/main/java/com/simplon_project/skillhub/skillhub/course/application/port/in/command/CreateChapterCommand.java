@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.application.port.in.command
 
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.HashSet;
 import java.util.List;
@@ -9,10 +10,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public record CreateChapterCommand(
-        String chapterTitle,
+        @NotNull String chapterTitle,
         String courseId,
         String sectionId,
-        Integer position
+        @NotNull Integer position
 ) {
     public Chapter mapToDomain() {
         return Chapter.builder()
