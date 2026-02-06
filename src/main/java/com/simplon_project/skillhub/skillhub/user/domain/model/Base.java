@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.user.domain.model;
 
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 @Getter
 @Setter
+@EqualsAndHashCode(exclude = {"id", "createdAt", "updatedAt"})
 public class Base {
     protected Id id;
     protected LocalDateTime createdAt;

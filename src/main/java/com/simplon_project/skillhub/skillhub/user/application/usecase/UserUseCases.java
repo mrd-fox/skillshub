@@ -1,7 +1,5 @@
 package com.simplon_project.skillhub.skillhub.user.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.adapter.UserRepositoryAdapter;
-import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.CreateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByExternalIdPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByIdPort;
@@ -10,11 +8,14 @@ import com.simplon_project.skillhub.skillhub.user.application.port.in.command.Cr
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.UpdateUserCommand;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.FindUserByExternalIdPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadUserPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.SaveUserPort;
 import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.UUID;
@@ -22,36 +23,36 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(transactionManager = "userTxManager")
-public class UserUseCases implements CreateUserPort, GetUserByIdPort , GetUserByExternalIdPort, UpdateUserPort {
-    private final UserRepositoryAdapter userRepositoryAdapter;
+public class UserUseCases implements CreateUserPort, GetUserByIdPort, GetUserByExternalIdPort, UpdateUserPort {
+    private final SaveUserPort saveUserPort;
+    private final LoadUserPort loadUserPort;
+    private final FindUserByExternalIdPort findUserByExternalIdPort;
 
     @Override
     public User create(CreateUserCommand command) {
         User user = command.mapToDomain();
-        var saved = userRepositoryAdapter.save(user);
-        return UserEntityMapper.mapToDomain(saved);
+        return saveUserPort.saveUser(user);
     }
 
     @Override
     @Transactional(readOnly = true)
     public User getUserById(GetUserByIdCommand command) {
-        return userRepositoryAdapter.loadUserById(command.toDomainId());
+        return loadUserPort.loadUserById(command.toDomainId());
     }
 
     @Override
     public User getUserByExternalId(GetUserByExternalIdCommand command) {
-        return userRepositoryAdapter.findByExternalId(command.toExternalId());
+        return findUserByExternalIdPort.findUserByExternalId(command.toExternalId());
     }
 
     @Override
     public User update(UpdateUserCommand command) {
 
         UUID externalId = UUID.fromString(command.externalId());
-        User existing = userRepositoryAdapter.findByExternalId(externalId);
+        User existing = findUserByExternalIdPort.findUserByExternalId(externalId);
         // Apply PATCH-like fields (command already normalized: null means "not provided")
         buildExisting(command, existing);
-        var saved = userRepositoryAdapter.save(existing);
-        return UserEntityMapper.mapToDomain(saved);
+        return saveUserPort.saveUser(existing);
     }
 
     private static void buildExisting(UpdateUserCommand command, User existing) {

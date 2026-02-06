@@ -16,6 +16,7 @@ public record CreateSectionRequest(
         @Schema(example = "Title of section", description = "The title of section", requiredMode = REQUIRED)
         @NotBlank
         String title,
+        Integer position,
         List<CreateChapterRequest> chapters
 ) {
 
@@ -23,6 +24,7 @@ public record CreateSectionRequest(
         return new CreateSectionCommand(
                 courseId,
                 title,
+                position,
                 CreateChapterRequest.toChapterCommands(chapters, courseId, sectionId));
     }
 

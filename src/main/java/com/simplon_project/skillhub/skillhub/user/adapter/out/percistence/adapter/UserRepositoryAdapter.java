@@ -6,7 +6,9 @@ import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.UserEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaRoleRepository;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.FindUserByExternalIdPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadUserPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.SaveUserPort;
 import com.simplon_project.skillhub.skillhub.user.domain.exception.UserNotFoundException;
 import com.simplon_project.skillhub.skillhub.user.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
@@ -20,7 +22,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class UserRepositoryAdapter implements LoadUserPort {
+public class UserRepositoryAdapter implements LoadUserPort, SaveUserPort, FindUserByExternalIdPort {
 
     private final JpaUserRepository userRepository;
     private final JpaRoleRepository roleRepository;
@@ -28,12 +30,14 @@ public class UserRepositoryAdapter implements LoadUserPort {
     /**
      * Save or update user entity in database.
      */
-    public UserEntity save(User user) {
+    @Override
+    public User saveUser(User user) {
         var roles = user.getRoles();
         Set<RoleEntity> roleEntities = roleRepository.findByNameIn(roles);
         var userEntity = UserEntityMapper.mapToEntity(user);
         userEntity.setRoles(roleEntities);
-        return userRepository.saveAndFlush(userEntity);
+        UserEntity saved = userRepository.saveAndFlush(userEntity);
+        return UserEntityMapper.mapToDomain(saved);
     }
 
     /**
@@ -48,11 +52,11 @@ public class UserRepositoryAdapter implements LoadUserPort {
     }
 
 
-
     /**
      * Find user by external UUID (Keycloak ID).
      */
-    public User findByExternalId(UUID externalId) {
+    @Override
+    public User findUserByExternalId(UUID externalId) {
         UserEntity found = userRepository.findByExternalId(externalId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with external id:", externalId.toString()));
         return UserEntityMapper.mapToDomain(found);

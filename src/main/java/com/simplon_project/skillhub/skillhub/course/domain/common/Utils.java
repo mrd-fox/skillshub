@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.UUID;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-
 public class Utils {
     public static String generateUUID() {
         return UUID.randomUUID().toString().toUpperCase();

@@ -1,7 +1,7 @@
 package com.simplon_project.skillhub.skillhub.storage.application.worker;
 
-import com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.publishers.MediaEventPublisher;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.DownloadStoragePort;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.PublishMetadataExtractedPort;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.UpdateMediaPort;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaContent;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.VideoStatusEnum;
@@ -22,7 +22,7 @@ public class VideoProcessingWorker {
     private final DownloadStoragePort downloadStoragePort;
     private final VideoMetadataExtractor metadataExtractor;
     private final DiskAwareQueue diskQueue; // ✅ injection de la queue
-    private final MediaEventPublisher mediaEventPublisher;
+    private final PublishMetadataExtractedPort publishMetadataExtractedPort;
 
     @Async("videoExecutor")
     @Transactional("storageTxManager")
@@ -45,7 +45,7 @@ public class VideoProcessingWorker {
 
             log.info("✅ Traitement terminé pour {}", media.getFilename());
             // 🔥 Publish event extracted
-            mediaEventPublisher.publishMetadataExtracted(media, metadata);
+            publishMetadataExtractedPort.publishMetadataExtracted(media, metadata);
         } catch (Exception e) {
             log.error("❌ Erreur pendant le traitement vidéo {}", media.getFilename(), e);
         } finally {

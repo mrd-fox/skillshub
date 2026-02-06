@@ -1,9 +1,10 @@
 package com.simplon_project.skillhub.skillhub.user.adapter.out.percistence;
 
-import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.RoleEntity;
+import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.mapper.RoleEntityMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaRoleRepository;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadRolePort;
 import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
+import com.simplon_project.skillhub.skillhub.user.domain.model.Role;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -25,11 +26,12 @@ public class RoleAdapter implements LoadRolePort {
     }
 
     @Override
-    public Set<RoleEntity> loadRolesByNames(Set<RolesEnum> roles) {
+    public Set<Role> loadRolesByNames(Set<RolesEnum> roles) {
         return roles.stream()
                 .map(roleEnum -> roleJpaRepository.findByName(roleEnum)
                         .orElseThrow(() ->
                                 new IllegalStateException("Role not found in database: " + roleEnum)))
+                .map(RoleEntityMapper::mapToDomain)
                 .collect(Collectors.toSet());
     }
 }

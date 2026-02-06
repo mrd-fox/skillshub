@@ -45,9 +45,9 @@ public class VideoRepositoryAdapter implements
     }
 
     @Override
-    public boolean checkVideoExistsForChapter(EntityId chapterId) {
+    public boolean checkVideoExistsForChapter(Id chapterId) {
 
-        return jpaRepository.existsByChapterId(chapterId);
+        return jpaRepository.existsByChapterId(EntityId.of(chapterId.asUUID()));
     }
 
     @Override

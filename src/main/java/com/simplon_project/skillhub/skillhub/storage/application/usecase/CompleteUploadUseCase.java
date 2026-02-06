@@ -1,8 +1,8 @@
 package com.simplon_project.skillhub.skillhub.storage.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.publishers.MediaEventPublisher;
 import com.simplon_project.skillhub.skillhub.storage.application.port.in.CompleteUploadMediaContentPort;
 import com.simplon_project.skillhub.skillhub.storage.application.port.in.command.CompleteUploadCommand;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.PublishMediaUploadedPort;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.SaveMediaContentPort;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.StatObjectPort;
 import com.simplon_project.skillhub.skillhub.storage.application.worker.VideoProcessingWorker;
@@ -24,7 +24,7 @@ public class CompleteUploadUseCase implements CompleteUploadMediaContentPort {
     private final SaveMediaContentPort saveMediaContentPort;
     private final StorageProperties props;
     private final Clock clock;
-    private final MediaEventPublisher videoPublisher;
+    private final PublishMediaUploadedPort publishMediaUploadedPort;
     private final VideoProcessingWorker videoProcessingWorker;
 
     @Override
@@ -55,7 +55,7 @@ public class CompleteUploadUseCase implements CompleteUploadMediaContentPort {
         // 4) publish
         //todo we can evaluate here with "Outbox pattern"
         try {
-            videoPublisher.publishMediaUploaded(savedMedia);
+            publishMediaUploadedPort.publishMediaUploaded(savedMedia);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to publish media event", e);
         }

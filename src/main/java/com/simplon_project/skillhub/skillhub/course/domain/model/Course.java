@@ -1,7 +1,8 @@
 package com.simplon_project.skillhub.skillhub.course.domain.model;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.SectionNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadySubmittedException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.SectionNotFoundException;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -74,6 +75,31 @@ public class Course extends Base {
         return sections.stream()
                 .sorted(Comparator.comparingInt(s -> s.getPosition() == null ? Integer.MAX_VALUE : s.getPosition()))
                 .toList();
+    }
+
+    /**
+     * Marks the course as waiting for validation.
+     * Transitions from DRAFT, REJECTED, or VALIDATED to WAITING_VALIDATION.
+     *
+     * @throws CourseAlreadySubmittedException if the course is already WAITING_VALIDATION or PUBLISHED
+     */
+    public void markAsWaitingValidation() {
+        if (this.status == CourseStatusEnum.WAITING_VALIDATION) {
+            throw new CourseAlreadySubmittedException(
+                    this.getId() != null ? this.getId().asString() : "unknown",
+                    CourseStatusEnum.WAITING_VALIDATION.name()
+            );
+        }
+
+        if (this.status == CourseStatusEnum.PUBLISHED) {
+            throw new CourseAlreadySubmittedException(
+                    this.getId() != null ? this.getId().asString() : "unknown",
+                    CourseStatusEnum.PUBLISHED.name()
+            );
+        }
+
+        // Transition from DRAFT, REJECTED, or VALIDATED to WAITING_VALIDATION
+        this.status = CourseStatusEnum.WAITING_VALIDATION;
     }
 
 }

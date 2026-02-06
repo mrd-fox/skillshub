@@ -7,10 +7,10 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapp
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseEntityDetailMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseSummaryMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CreateNewCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCourseDetailPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCoursesPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.SaveCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
@@ -28,7 +28,7 @@ import java.util.Optional;
 @Component
 @Transactional("courseTxManager")
 public class CourseAdapter implements
-        SaveCoursePort,
+        CreateNewCoursePort,
         FindCoursePort,
         LoadPublicCoursesPort,
         LoadPublicCourseDetailPort {
@@ -51,8 +51,9 @@ public class CourseAdapter implements
         }
     }
 
+    @Override
     @Transactional("courseTxManager")
-    public Course saveCourse(Course course) {
+    public Course createNewCourse(Course course) {
         var courseEntity = CourseEntityMapper.mapToEntity(course, new CycleAvoidingMappingContext());
         var saved = courseJpaRepository.saveAndFlush(courseEntity);
         entityManager.refresh(saved);

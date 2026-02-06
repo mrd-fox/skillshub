@@ -21,8 +21,8 @@ public class ChapterRepositoryAdapter implements LoadChapterByIdPort, LoadChapte
     private final JpaChapterRepository jpaRepository;
 
     @Override
-    public Optional<Chapter> loadChapterById(EntityId chapterId) {
-        return jpaRepository.findById(chapterId).map(
+    public Optional<Chapter> loadChapterById(Id chapterId) {
+        return jpaRepository.findById(EntityId.of(chapterId.asUUID())).map(
                 entity -> ChapterEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext())
         );
     }
@@ -35,8 +35,8 @@ public class ChapterRepositoryAdapter implements LoadChapterByIdPort, LoadChapte
     }
 
     @Override
-    public boolean checkChapterBelongsToCoursePort(EntityId chapterId, EntityId courseId) {
-        return jpaRepository.belongsToCourse(chapterId, courseId);
+    public boolean checkChapterBelongsToCoursePort(Id chapterId, Id courseId) {
+        return jpaRepository.belongsToCourse(EntityId.of(chapterId.asUUID()), EntityId.of(courseId.asUUID()));
 
     }
 }

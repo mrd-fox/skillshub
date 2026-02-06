@@ -4,7 +4,7 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 
 import java.util.Optional;
 
-public interface CourseRepository {
+public interface CoursePort {
     Optional<Course> findById(String id);
 
     Optional<Course> findByTitle(String title);

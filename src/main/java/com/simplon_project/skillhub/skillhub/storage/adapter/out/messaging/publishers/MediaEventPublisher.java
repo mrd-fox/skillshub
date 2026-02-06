@@ -2,6 +2,8 @@ package com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.publ
 
 import com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.events.VideoMetadataExtractedEvent;
 import com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.events.VideoUploadedEvent;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.PublishMediaUploadedPort;
+import com.simplon_project.skillhub.skillhub.storage.application.port.out.PublishMetadataExtractedPort;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.eventpublisher.EventPublisherPort;
 import com.simplon_project.skillhub.skillhub.storage.config.rabbit.RabbitStorageProps;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaContent;
@@ -13,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class MediaEventPublisher implements EventPublisherPort {
+public class MediaEventPublisher implements PublishMediaUploadedPort, PublishMetadataExtractedPort, EventPublisherPort {
 
 
     private final RabbitTemplate rabbitTemplate;
