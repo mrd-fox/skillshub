@@ -179,12 +179,23 @@ public class SkillshubArchitectureRulesTest {
                 .that()
                 .resideInAPackage("..common..")
                 .and()
-                .resideOutsideOfPackages("..common.messaging..", "..common.aop..")
+                .resideOutsideOfPackages(
+                        "..common.messaging..",
+                        "..common.aop.."
+                )
+                .and()
+                .doNotHaveSimpleName("package-info")
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage("org.springframework..", "jakarta..", "javax..", "org.hibernate..")
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta..",
+                        "javax..",
+                        "org.hibernate.."
+                )
                 .because("Common is shared between modules; it must be framework-agnostic. " +
-                        "Exceptions: common.messaging and common.aop may use Spring for cross-cutting concerns.")
+                        "Exceptions: common.messaging and common.aop may use Spring for cross-cutting concerns. " +
+                        "package-info is excluded to allow Spring Modulith @ApplicationModule.")
                 .check(classes);
     }
 
