@@ -9,6 +9,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.Cour
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.PublishCourseCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -36,6 +37,7 @@ public class CourseController {
     private final CreateChapterPort createChapterPort;
     private final GetCoursePort getCoursePort;
     private final CreateSectionPort createSectionPort;
+    private final PublishCoursePort publishCoursePort;
 
     @PostMapping
     @Operation(description = "Create a draft of course")
@@ -90,7 +92,7 @@ public class CourseController {
 
         return CourseResponseMapper.mapToCourseResponse(updatedCourse);
     }
-    
+
 
     @PostMapping("courses/{courseId}/sections/{sectionId}/chapters")
     @Operation(description = "Create a draft of chapter")
@@ -164,6 +166,85 @@ public class CourseController {
         var command = GetCourseCommand.of(externalUserId, userRolesCsv, courseId);
         var course = getCoursePort.getCourse(command);
         return CourseResponseMapper.mapToCourseResponse(course);
+    }
+
+    @Operation(
+            summary = "Publish a course (submit for validation)",
+            description = "Submits a course for validation. The course status will be set to WAITING_VALIDATION. " +
+                    "Only ADMIN or course owner (TUTOR) can publish. " +
+                    "All chapters must have videos in READY status."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Course successfully submitted for validation",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CourseResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Missing user context (X-User-Id or X-User-Roles headers)",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Unauthorized - insufficient role or not course owner",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Course not found",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Course already submitted (WAITING_VALIDATION or PUBLISHED)",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Course not publishable - missing videos or videos not ready",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            )
+    })
+    @PostMapping("/{courseId}/publish")
+    @ResponseStatus(HttpStatus.OK)
+    public CourseResponse publishCourse(
+            @Parameter(description = "Course id", required = true)
+            @PathVariable @NotBlank String courseId,
+
+            @Parameter(description = "Authenticated user external id (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Id") @NotBlank String externalUserId,
+
+            @Parameter(description = "Authenticated user roles CSV (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Roles") @NotBlank String rawRoles
+    ) {
+        log.info("📤 Incoming publishCourse request for courseId: {}", courseId);
+        log.info("👤 X-User-Id: {}", externalUserId);
+        log.info("🔐 X-User-Roles: {}", rawRoles);
+
+        var command = PublishCourseCommand.of(courseId, externalUserId, rawRoles);
+        var publishedCourse = publishCoursePort.publishCourse(command);
+
+        log.info("✅ Course {} published successfully with status: {}", courseId, publishedCourse.getStatus());
+        return CourseResponseMapper.mapToCourseResponse(publishedCourse);
     }
 
 }

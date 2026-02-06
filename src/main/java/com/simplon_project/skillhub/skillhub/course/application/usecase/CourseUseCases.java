@@ -9,8 +9,10 @@ import com.simplon_project.skillhub.skillhub.course.application.port.out.video.U
 import com.simplon_project.skillhub.skillhub.course.domain.enums.AccessLevelEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import com.simplon_project.skillhub.skillhub.course.domain.policy.CourseAccessPolicy;
+import com.simplon_project.skillhub.skillhub.course.domain.specification.CoursePublishableSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +33,8 @@ public class CourseUseCases implements
         UploadMediaPort,
         GetCoursePort,
         ListPublicCoursesPort,
-        GetPublicCourseDetailPort {
+        GetPublicCourseDetailPort,
+        PublishCoursePort {
 
     private final SaveCoursePort saveCoursePort;
     private final FindCoursePort findCoursePort;
@@ -169,6 +172,41 @@ public class CourseUseCases implements
     public PublicCourseDetail getPublicCourseDetail(GetPublicCourseDetailCommand command) {
         return loadPublicCourseDetailPort.loadPublicCourseDetail(command.courseId())
                 .orElseThrow(() -> new CourseNotFoundException(command.courseId()));
+    }
+
+    @Transactional("courseTxManager")
+    @Override
+    public Course publishCourse(PublishCourseCommand command) {
+        var courseId = Id.of(command.courseId());
+        var externalUserId = command.externalUserId();
+        var roles = command.userRoles();
+
+        Course course = loadCourseWithVideoPort.loadWithVideo(courseId);
+        if (course == null) {
+            throw new CourseNotFoundException(courseId);
+        }
+
+        boolean isAdmin = roles.contains(UserRole.ADMIN);
+        boolean isTutorOwner = roles.contains(UserRole.TUTOR)
+                && Objects.equals(course.getExternalUserId(), externalUserId);
+
+        if (!isAdmin && !isTutorOwner) {
+            if (roles.contains(UserRole.TUTOR)) {
+                throw new UnauthorizedCourseAccessException(
+                        "Tutor can only publish their own courses"
+                );
+            } else {
+                throw new UnauthorizedCourseAccessException(
+                        "Only ADMIN or TUTOR can publish courses"
+                );
+            }
+        }
+
+        CoursePublishableSpecification.check(course);
+
+        course.markAsWaitingValidation();
+
+        return saveCoursePort.saveCourse(course);
     }
 
 

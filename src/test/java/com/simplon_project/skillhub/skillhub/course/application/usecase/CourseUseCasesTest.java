@@ -6,11 +6,12 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseDetail;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseSummary;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadySubmittedException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseNotPublishableException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
+import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -566,6 +567,400 @@ public class CourseUseCasesTest {
             // WHEN + THEN
             assertThrows(CourseNotFoundException.class,
                     () -> courseUseCases.getPublicCourseDetail(command));
+        }
+    }
+
+    @Nested
+    @DisplayName("PublishCourse Tests")
+    class PublishCourse {
+
+        @Test
+        @DisplayName("ADMIN should successfully publish a publishable course")
+        void publishCourse_asAdmin_shouldSucceed() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            String adminUserId = "admin-123";
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId(adminUserId)
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+            Course savedCourse = buildPublishableCourse();
+            savedCourse.setStatus(CourseStatusEnum.WAITING_VALIDATION);
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(savedCourse);
+
+            // WHEN
+            Course result = courseUseCases.publishCourse(command);
+
+            // THEN
+            assertNotNull(result);
+            assertEquals(CourseStatusEnum.WAITING_VALIDATION, result.getStatus());
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("TUTOR owner should successfully publish a publishable course")
+        void publishCourse_asTutorOwner_shouldSucceed() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            String tutorUserId = EXTERNAL_AUTHOR_ID;
+            Set<UserRole> tutorRoles = Set.of(UserRole.TUTOR);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId(tutorUserId)
+                    .userRoles(tutorRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+            courseWithVideo.setExternalUserId(tutorUserId);
+
+            Course savedCourse = buildPublishableCourse();
+            savedCourse.setStatus(CourseStatusEnum.WAITING_VALIDATION);
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(savedCourse);
+
+            // WHEN
+            Course result = courseUseCases.publishCourse(command);
+
+            // THEN
+            assertNotNull(result);
+            assertEquals(CourseStatusEnum.WAITING_VALIDATION, result.getStatus());
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("TUTOR non-owner should fail with 403")
+        void publishCourse_asTutorNonOwner_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            String tutorUserId = OTHER_USER_ID;
+            Set<UserRole> tutorRoles = Set.of(UserRole.TUTOR);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId(tutorUserId)
+                    .userRoles(tutorRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+            courseWithVideo.setExternalUserId(EXTERNAL_AUTHOR_ID); // Different owner
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+
+            // WHEN + THEN
+            assertThrows(UnauthorizedCourseAccessException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT should fail with 403")
+        void publishCourse_asStudent_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            String studentUserId = "student-123";
+            Set<UserRole> studentRoles = Set.of(UserRole.STUDENT);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId(studentUserId)
+                    .userRoles(studentRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+
+            // WHEN + THEN
+            assertThrows(UnauthorizedCourseAccessException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("Should fail with 409 if course already WAITING_VALIDATION")
+        void publishCourse_alreadyWaitingValidation_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId("admin-123")
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+            courseWithVideo.setStatus(CourseStatusEnum.WAITING_VALIDATION);
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+
+            // WHEN + THEN
+            assertThrows(CourseAlreadySubmittedException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("Should fail with 409 if course already PUBLISHED")
+        void publishCourse_alreadyPublished_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId("admin-123")
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithVideo = buildPublishableCourse();
+            courseWithVideo.setStatus(CourseStatusEnum.PUBLISHED);
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
+
+            // WHEN + THEN
+            assertThrows(CourseAlreadySubmittedException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("Should fail with 422 if chapter has no video")
+        void publishCourse_chapterWithoutVideo_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId("admin-123")
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithoutVideo = buildCourseWithoutVideo();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithoutVideo);
+
+            // WHEN + THEN
+            assertThrows(CourseNotPublishableException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("Should fail with 422 if video status is PROCESSING")
+        void publishCourse_videoNotReady_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId("admin-123")
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithProcessingVideo = buildCourseWithProcessingVideo();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithProcessingVideo);
+
+            // WHEN + THEN
+            assertThrows(CourseNotPublishableException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("Should fail with 422 if video status is FAILED")
+        void publishCourse_videoFailed_shouldFail() {
+            // GIVEN
+            String courseId = COURSE_ID_STRING;
+            Set<UserRole> adminRoles = Set.of(UserRole.ADMIN);
+
+            var command = PublishCourseCommand.builder()
+                    .courseId(courseId)
+                    .externalUserId("admin-123")
+                    .userRoles(adminRoles)
+                    .build();
+
+            Course courseWithFailedVideo = buildCourseWithFailedVideo();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithFailedVideo);
+
+            // WHEN + THEN
+            assertThrows(CourseNotPublishableException.class,
+                    () -> courseUseCases.publishCourse(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+        }
+
+        // Helper methods for building test courses
+        private Course buildPublishableCourse() {
+            VideoInfo readyVideo = VideoInfo.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .sourceUri("vimeo://123456")
+                    .status(VideoStatusEnum.READY)
+                    .duration(3600L)
+                    .build();
+
+            Chapter chapter = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(readyVideo)
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(Set.of(chapter))
+                    .build();
+
+            chapter.setSection(section);
+
+            Course course = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .description(COURSE_DESCRIPTION)
+                    .price(COURSE_PRICE)
+                    .status(CourseStatusEnum.DRAFT)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(Set.of(section))
+                    .build();
+
+            section.setCourse(course);
+            return course;
+        }
+
+        private Course buildCourseWithoutVideo() {
+            Chapter chapter = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(null) // No video
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(Set.of(chapter))
+                    .build();
+
+            chapter.setSection(section);
+
+            Course course = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .description(COURSE_DESCRIPTION)
+                    .price(COURSE_PRICE)
+                    .status(CourseStatusEnum.DRAFT)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(Set.of(section))
+                    .build();
+
+            section.setCourse(course);
+            return course;
+        }
+
+        private Course buildCourseWithProcessingVideo() {
+            VideoInfo processingVideo = VideoInfo.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .sourceUri("vimeo://123456")
+                    .status(VideoStatusEnum.PROCESSING)
+                    .build();
+
+            Chapter chapter = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(processingVideo)
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(Set.of(chapter))
+                    .build();
+
+            chapter.setSection(section);
+
+            Course course = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .description(COURSE_DESCRIPTION)
+                    .price(COURSE_PRICE)
+                    .status(CourseStatusEnum.DRAFT)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(Set.of(section))
+                    .build();
+
+            section.setCourse(course);
+            return course;
+        }
+
+        private Course buildCourseWithFailedVideo() {
+            VideoInfo failedVideo = VideoInfo.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .sourceUri("vimeo://123456")
+                    .status(VideoStatusEnum.FAILED)
+                    .errorMessage("Upload failed")
+                    .build();
+
+            Chapter chapter = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(failedVideo)
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(Set.of(chapter))
+                    .build();
+
+            chapter.setSection(section);
+
+            Course course = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .description(COURSE_DESCRIPTION)
+                    .price(COURSE_PRICE)
+                    .status(CourseStatusEnum.DRAFT)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(Set.of(section))
+                    .build();
+
+            section.setCourse(course);
+            return course;
         }
     }
 }

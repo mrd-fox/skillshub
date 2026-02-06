@@ -32,6 +32,7 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
     @Query("""
                 select c
                 from CourseEntity c
+                where c.status = 'PUBLISHED'
                 order by c.createdAt desc
             """)
     List<CourseEntity> findAllForPublicCatalog();
