@@ -1,11 +1,12 @@
 package com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.events;
 
-import com.simplon_project.skillhub.skillhub.course.domain.exception.NodeIdValidationException;
+import com.simplon_project.skillhub.skillhub.storage.domaine.exception.NodeIdValidationException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.UUID;
 
-import static com.simplon_project.skillhub.skillhub.course.domain.common.Utils.generateUUID;
+import static com.simplon_project.skillhub.skillhub.storage.domaine.common.Utils.generateUUID;
+
 
 public class EventId {
     private String id;

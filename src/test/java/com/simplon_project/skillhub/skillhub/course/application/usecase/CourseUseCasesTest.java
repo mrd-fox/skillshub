@@ -1,7 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
-import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;

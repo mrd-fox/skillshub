@@ -1,11 +1,11 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.adapter;
 
 
-import com.simplon_project.skillhub.skillhub.course.adapter.common.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleAvoidingMappingContext;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.*;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
+import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseStructurePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseWithVideoPort;
