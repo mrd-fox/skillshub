@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.course.domain.common;
+package com.simplon_project.skillhub.skillhub.user.domain.common;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

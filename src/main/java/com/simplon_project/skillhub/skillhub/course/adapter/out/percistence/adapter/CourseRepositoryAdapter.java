@@ -6,9 +6,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.enti
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CourseRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseStructurePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseWithVideoPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
@@ -24,25 +22,28 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CourseRepositoryAdapter implements CourseRepository, LoadCourseStructurePort, LoadCourseWithVideoPort {
+public class CourseRepositoryAdapter implements
+        CoursePort,
+        LoadCourseByIdPort,
+        UpdateCourseStructurePort,
+        LoadCourseStructurePort,
+        LoadCourseWithVideoPort {
 
     private final JpaCourseRepository courseJpaRepository;
 
+    // ==================== LoadCourseByIdPort ====================
+
     @Override
-    public Optional<Course> findById(String id) {
-        var idModified = EntityId.fromString(id);
+    public Optional<Course> loadCourseById(Id courseId) {
+        var idModified = EntityId.fromString(courseId.asString());
         return courseJpaRepository.findById(idModified)
                 .map(entity -> CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
     }
 
-    @Override
-    public Optional<Course> findByTitle(String title) {
-        return courseJpaRepository.findByTitle(title)
-                .map(entity -> CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
-    }
+    // ==================== UpdateCourseStructurePort ====================
 
     @Override
-    public Course save(Course courseDomain) {
+    public Course updateCourseStructure(Course courseDomain) {
         var courseId = EntityId.fromString(courseDomain.getId().asString());
 
         // 1) Charger le graphe MANAGÉ
@@ -56,8 +57,26 @@ public class CourseRepositoryAdapter implements CourseRepository, LoadCourseStru
         // 3) Persister et flusher pour peupler les timestamps
         var savedCourseEntity = courseJpaRepository.saveAndFlush(managedCourseEntity);
 
-        // 4) Mapper depuis l’entity persistée
+        // 4) Mapper depuis l'entity persistée
         return CourseEntityMapper.mapToDomain(savedCourseEntity, new CycleAvoidingMappingContext());
+    }
+
+    // ==================== CoursePort (legacy - pour compatibilité) ====================
+
+    @Override
+    public Optional<Course> findById(String id) {
+        return loadCourseById(Id.of(id));
+    }
+
+    @Override
+    public Optional<Course> findByTitle(String title) {
+        return courseJpaRepository.findByTitle(title)
+                .map(entity -> CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext()));
+    }
+
+    @Override
+    public Course save(Course courseDomain) {
+        return updateCourseStructure(courseDomain);
     }
 
     private void applyDomainToManagedEntity(Course courseDomain, CourseEntity managedCourseEntity) {
@@ -88,6 +107,7 @@ public class CourseRepositoryAdapter implements CourseRepository, LoadCourseStru
                         .sectionId(EntityId.of(sectionId))
                         .title(sectionDomain.getTitle())
                         .course(managedCourseEntity)
+                        .position(sectionDomain.getPosition())
                         .build();
 
                 var chapterEntities = sectionDomain.getChapters().stream()

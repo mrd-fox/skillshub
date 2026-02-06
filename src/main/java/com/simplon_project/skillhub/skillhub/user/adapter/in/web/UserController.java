@@ -1,6 +1,5 @@
 package com.simplon_project.skillhub.skillhub.user.adapter.in.web;
 
-import com.simplon_project.skillhub.skillhub.user.adapter.common.UserHelper;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.mapper.UserResponseMapper;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.request.UpdateUserRequest;
 import com.simplon_project.skillhub.skillhub.user.adapter.in.web.response.UserResponse;
@@ -10,7 +9,6 @@ import com.simplon_project.skillhub.skillhub.user.application.port.in.GetUserByI
 import com.simplon_project.skillhub.skillhub.user.application.port.in.UpdateUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
-import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -44,8 +42,8 @@ public class UserController {
                     """,
             parameters = {
                     @Parameter(name = "X-User-Id", in = ParameterIn.HEADER, required = true, description = "External Keycloak user ID (UUID)", example = "9a5a94e5-04b2-47b8-9ef2-4426d1b640b2"),
-                    @Parameter(name = "X-User-FirstName", in = ParameterIn.HEADER,  description = "User's first name", example = "Marina"),
-                    @Parameter(name = "X-User-LastName", in = ParameterIn.HEADER,  description = "User's last name", example = "Darde"),
+                    @Parameter(name = "X-User-FirstName", in = ParameterIn.HEADER, description = "User's first name", example = "Marina"),
+                    @Parameter(name = "X-User-LastName", in = ParameterIn.HEADER, description = "User's last name", example = "Darde"),
                     @Parameter(name = "X-User-Email", in = ParameterIn.HEADER, required = true, description = "User email address", example = "marina.darde@3wa.io"),
                     @Parameter(name = "X-User-Address", in = ParameterIn.HEADER, description = "User address", example = "12 rue des Lilas"),
                     @Parameter(name = "X-User-City", in = ParameterIn.HEADER, description = "City", example = "Paris"),
@@ -112,9 +110,9 @@ public class UserController {
     @Operation(
             summary = "Get user by external ID",
             description = """
-                Retrieves a user from the internal User Service database using the external ID (Keycloak subject).
-                This endpoint does NOT query IAM.
-                """,
+                    Retrieves a user from the internal User Service database using the external ID (Keycloak subject).
+                    This endpoint does NOT query IAM.
+                    """,
             parameters = {
                     @Parameter(
                             name = "externalId",

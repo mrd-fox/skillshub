@@ -1,8 +1,8 @@
 package com.simplon_project.skillhub.skillhub.course.domain.model;
 
-import com.simplon_project.skillhub.skillhub.course.application.exception.SectionNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadySubmittedException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.SectionNotFoundException;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 

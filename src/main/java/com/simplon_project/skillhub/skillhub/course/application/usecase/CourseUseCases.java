@@ -36,7 +36,8 @@ public class CourseUseCases implements
         GetPublicCourseDetailPort,
         PublishCoursePort {
 
-    private final SaveCoursePort saveCoursePort;
+    private final CreateNewCoursePort createNewCoursePort;
+    private final UpdateCourseStructurePort updateCourseStructurePort;
     private final FindCoursePort findCoursePort;
 
     private final LoadPublicCoursesPort loadPublicCoursesPort;
@@ -50,8 +51,8 @@ public class CourseUseCases implements
     @Override
     public Course createCourse(CreateCourseCommand command) {
         var course = command.mapToDomain();
-        saveCoursePort.assertCourseNotExists(course);
-        return saveCoursePort.saveCourse(course);
+        createNewCoursePort.assertCourseNotExists(course);
+        return createNewCoursePort.createNewCourse(course);
     }
 
     @Transactional("courseTxManager")
@@ -78,7 +79,7 @@ public class CourseUseCases implements
             if (!Objects.equals(command.title(), existing.getTitle())) {
                 // Uniqueness check is persistence-level, cannot be done in Command
                 var candidate = Course.builder().title(command.title()).build();
-                saveCoursePort.assertCourseNotExists(candidate);
+                createNewCoursePort.assertCourseNotExists(candidate);
                 existing.setTitle(command.title());
             }
 
@@ -96,7 +97,7 @@ public class CourseUseCases implements
             applySectionsPatch(existing, command.sections());
         }
 
-        return saveCoursePort.saveCourse(existing);
+        return updateCourseStructurePort.updateCourseStructure(existing);
     }
 
     @Override
@@ -206,7 +207,7 @@ public class CourseUseCases implements
 
         course.markAsWaitingValidation();
 
-        return saveCoursePort.saveCourse(course);
+        return updateCourseStructurePort.updateCourseStructure(course);
     }
 
 

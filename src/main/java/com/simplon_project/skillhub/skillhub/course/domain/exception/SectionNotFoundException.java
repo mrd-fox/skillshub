@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.course.application.exception;
+package com.simplon_project.skillhub.skillhub.course.domain.exception;
 
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import org.zalando.problem.AbstractThrowableProblem;

@@ -1,4 +1,4 @@
-package com.simplon_project.skillhub.skillhub.user.adapter.common;
+package com.simplon_project.skillhub.skillhub.user.adapter.in.web;
 
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.CreateUserCommand;
 import jakarta.servlet.http.HttpServletRequest;

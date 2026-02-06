@@ -38,7 +38,10 @@ public class CourseUseCasesTest {
     private JpaCourseRepository courseJpaRepository;
 
     @Mock
-    private SaveCoursePort saveCoursePort;
+    private CreateNewCoursePort createNewCoursePort;
+
+    @Mock
+    private UpdateCourseStructurePort updateCourseStructurePort;
 
     @Mock
     private FindCoursePort findCoursePort;
@@ -122,8 +125,8 @@ public class CourseUseCasesTest {
 
             var expectedCourse = buildCourse();
 
-            doNothing().when(saveCoursePort).assertCourseNotExists(any(Course.class));
-            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(expectedCourse);
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(createNewCoursePort.createNewCourse(any(Course.class))).thenReturn(expectedCourse);
 
             // WHEN
             var createdCourse = courseUseCases.createCourse(createCourseCommand);
@@ -133,8 +136,8 @@ public class CourseUseCasesTest {
             assertEquals(COURSE_TITLE, createdCourse.getTitle());
             assertEquals(COURSE_DESCRIPTION, createdCourse.getDescription());
             assertEquals(COURSE_PRICE, createdCourse.getPrice());
-            verify(saveCoursePort).assertCourseNotExists(any(Course.class));
-            verify(saveCoursePort).saveCourse(any(Course.class));
+            verify(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            verify(createNewCoursePort).createNewCourse(any(Course.class));
         }
 
         @Test
@@ -150,7 +153,7 @@ public class CourseUseCasesTest {
             ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
 
             doThrow(new CourseAlreadyExistsException(COURSE_TITLE))
-                    .when(saveCoursePort)
+                    .when(createNewCoursePort)
                     .assertCourseNotExists(argThat(c -> COURSE_TITLE.equals(c.getTitle())));
 
             // WHEN + THEN
@@ -158,7 +161,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.createCourse(courseCommand));
 
             assertEquals("course-already-exists: Course entity with title Course Title already exists", exception.getMessage());
-            verify(saveCoursePort).assertCourseNotExists(captor.capture());
+            verify(createNewCoursePort).assertCourseNotExists(captor.capture());
             assertThat(captor.getValue().getTitle()).isEqualTo(COURSE_TITLE);
         }
 
@@ -174,15 +177,15 @@ public class CourseUseCasesTest {
 
             var expectedCourse = buildCourse();
 
-            doNothing().when(saveCoursePort).assertCourseNotExists(any(Course.class));
-            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(expectedCourse);
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(createNewCoursePort.createNewCourse(any(Course.class))).thenReturn(expectedCourse);
 
             // WHEN
             var createdCourse = courseUseCases.createCourse(createCourseCommand);
 
             // THEN
             assertNotNull(createdCourse);
-            verify(saveCoursePort).saveCourse(any(Course.class));
+            verify(createNewCoursePort).createNewCourse(any(Course.class));
         }
     }
 
@@ -208,8 +211,8 @@ public class CourseUseCasesTest {
                     .build();
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
-            doNothing().when(saveCoursePort).assertCourseNotExists(any(Course.class));
-            when(saveCoursePort.saveCourse(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // WHEN
             var updatedCourse = courseUseCases.updateCourse(updateCommand);
@@ -217,7 +220,7 @@ public class CourseUseCasesTest {
             // THEN
             assertNotNull(updatedCourse);
             assertEquals(newTitle, updatedCourse.getTitle());
-            verify(saveCoursePort).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -235,7 +238,7 @@ public class CourseUseCasesTest {
                     .build();
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
-            when(saveCoursePort.saveCourse(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // WHEN
             var updatedCourse = courseUseCases.updateCourse(updateCommand);
@@ -260,7 +263,7 @@ public class CourseUseCasesTest {
                     .build();
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
-            when(saveCoursePort.saveCourse(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // WHEN
             var updatedCourse = courseUseCases.updateCourse(updateCommand);
@@ -323,8 +326,8 @@ public class CourseUseCasesTest {
                     .build();
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
-            doNothing().when(saveCoursePort).assertCourseNotExists(any(Course.class));
-            when(saveCoursePort.saveCourse(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             // WHEN
             var updatedCourse = courseUseCases.updateCourse(updateCommand);
@@ -350,7 +353,7 @@ public class CourseUseCasesTest {
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
             doThrow(new CourseAlreadyExistsException(duplicateTitle))
-                    .when(saveCoursePort).assertCourseNotExists(any(Course.class));
+                    .when(createNewCoursePort).assertCourseNotExists(any(Course.class));
 
             // WHEN + THEN
             assertThrows(CourseAlreadyExistsException.class,
@@ -593,7 +596,7 @@ public class CourseUseCasesTest {
             savedCourse.setStatus(CourseStatusEnum.WAITING_VALIDATION);
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
-            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(savedCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenReturn(savedCourse);
 
             // WHEN
             Course result = courseUseCases.publishCourse(command);
@@ -602,7 +605,7 @@ public class CourseUseCasesTest {
             assertNotNull(result);
             assertEquals(CourseStatusEnum.WAITING_VALIDATION, result.getStatus());
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -626,7 +629,7 @@ public class CourseUseCasesTest {
             savedCourse.setStatus(CourseStatusEnum.WAITING_VALIDATION);
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
-            when(saveCoursePort.saveCourse(any(Course.class))).thenReturn(savedCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenReturn(savedCourse);
 
             // WHEN
             Course result = courseUseCases.publishCourse(command);
@@ -635,7 +638,7 @@ public class CourseUseCasesTest {
             assertNotNull(result);
             assertEquals(CourseStatusEnum.WAITING_VALIDATION, result.getStatus());
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -662,7 +665,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -688,7 +691,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -714,7 +717,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -740,7 +743,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -765,7 +768,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -790,7 +793,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         @Test
@@ -815,7 +818,7 @@ public class CourseUseCasesTest {
                     () -> courseUseCases.publishCourse(command));
 
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
-            verify(saveCoursePort, never()).saveCourse(any(Course.class));
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
         }
 
         // Helper methods for building test courses

@@ -5,7 +5,7 @@ import com.simplon_project.skillhub.skillhub.user.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.lang.NonNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Set;
 import java.util.UUID;
@@ -13,15 +13,15 @@ import java.util.stream.Collectors;
 
 public record CreateUserCommand(
         @NotBlank String externalId,
-         String firstName,
-         String lastName,
+        String firstName,
+        String lastName,
         @Email @NotBlank String email,
         String address,
         String city,
         String country,
         String phoneNumber,
         String postalCode,
-        @NonNull Set<String> roles
+        @NotNull Set<String> roles
 
 ) {
     public User mapToDomain() {

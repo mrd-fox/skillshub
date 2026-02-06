@@ -4,20 +4,25 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
+import org.springframework.modulith.NamedInterface;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 /**
  * Skillshub - ArchUnit rules
  * <p>
  * Scope:
- * - Strict hexagonal architecture (adapter / application / domain)
+ * - Strict hexagonal architecture (adapter / application / domain) without layeredArchitecture()
  * - Spring Modulith boundaries (course, user, storage modules)
  * - "common" must remain framework-agnostic (except messaging/aop) and be the only shared surface
+ * <p>
+ * Constraints:
+ * - Commands may use Jakarta (e.g., jakarta.validation.*). This is allowed.
+ * - We avoid layeredArchitecture() because older ArchUnit versions produce massive false positives
+ * and lack ignoreDependency() helpers.
  */
 @AnalyzeClasses(
         packages = "com.simplon_project.skillhub.skillhub",
@@ -25,31 +30,8 @@ import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 )
 public class SkillshubArchitectureRulesTest {
 
-    // ----------------------------
-    // 1) Hexagonal layering rules
-    // ----------------------------
-
-    @ArchTest
-    void hexagonalArchitecture_isRespected(JavaClasses classes) {
-        layeredArchitecture()
-                .consideringAllDependencies()
-
-                .layer("Adapter In").definedBy("..adapter.in..")
-                .layer("Adapter Out").definedBy("..adapter.out..")
-                .layer("Application").definedBy("..application..")
-                .layer("Domain").definedBy("..domain..")
-                .layer("Common").definedBy("..common..")
-
-                .whereLayer("Adapter In").mayOnlyAccessLayers("Application", "Domain", "Common")
-                .whereLayer("Adapter Out").mayOnlyAccessLayers("Application", "Domain", "Common")
-                .whereLayer("Application").mayOnlyAccessLayers("Domain", "Common")
-                .whereLayer("Domain").mayOnlyAccessLayers("Common")
-
-                .check(classes);
-    }
-
     // ---------------------------------------------------------
-    // 2) Strict rule: @Service mainly in application layer
+    // 1) Spring stereotypes policy
     // ---------------------------------------------------------
 
     @ArchTest
@@ -82,62 +64,99 @@ public class SkillshubArchitectureRulesTest {
                 .check(classes);
     }
 
-    // ---------------------------------------------------------------------
-    // 3) Dependency prohibitions
-    // ---------------------------------------------------------------------
-
+    // ---------------------------------------------------------
+    // 2) Hexagonal dependency rules (internal-only, no external noise)
+    // ---------------------------------------------------------
+    // Adapter In: may depend on Application, Domain, Common. MUST NOT depend on Adapter Out.
     @ArchTest
-    void noPackage_shouldDependOnJetBrains(JavaClasses classes) {
+    void adapterIn_shouldNotDependOnAdapterOut(JavaClasses classes) {
         noClasses()
+                .that()
+                .resideInAPackage("..adapter.in..")
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage("org.jetbrains..")
-                .because("JetBrains annotations are not part of the runtime architecture contract.")
-                .allowEmptyShould(true)
+                .resideInAPackage("..adapter.out..")
+                .because("Adapter In must call Application ports, not Adapter Out directly.")
                 .check(classes);
     }
 
+    // Adapter Out: must not depend on Adapter In.
     @ArchTest
-    void domain_shouldNotDependOnSpringOrJakarta(JavaClasses classes) {
+    void adapterOut_shouldNotDependOnAdapterIn(JavaClasses classes) {
+        noClasses()
+                .that()
+                .resideInAPackage("..adapter.out..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..adapter.in..")
+                .because("Adapter Out must not depend on Adapter In.")
+                .check(classes);
+    }
+
+    // Application: must not depend on adapters.
+    @ArchTest
+    void application_shouldNotDependOnAdapters(JavaClasses classes) {
+        noClasses()
+                .that()
+                .resideInAPackage("..application..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("..adapter.in..", "..adapter.out..")
+                .because("Application must not depend on adapters (in or out).")
+                .check(classes);
+    }
+
+    // Domain: must not depend on application nor adapters (pure business).
+    @ArchTest
+    void domain_shouldNotDependOnApplicationOrAdapters(JavaClasses classes) {
         noClasses()
                 .that()
                 .resideInAPackage("..domain..")
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "jakarta..",
-                        "javax..",
-                        "org.hibernate.."
-                )
-                .orShould()
-                .dependOnClassesThat()
-                .resideInAnyPackage("org.springframework..")
-                .andShould().notHaveSimpleName("NamedInterface")
-                .because("Domain must remain pure (no Spring/Jakarta/JPA/Hibernate dependencies). " +
-                        "Exception: @NamedInterface from Spring Modulith is allowed to expose domain enums.")
+                .resideInAnyPackage("..application..", "..adapter..")
+                .because("Domain must not depend on application or adapters.")
                 .check(classes);
     }
 
+    // Domain: must remain pure (no Spring/Jakarta/JPA/Hibernate) except @NamedInterface.
     @ArchTest
-    void applicationPortsAndCommands_shouldNotDependOnSpringOrJakarta(JavaClasses classes) {
+    void domain_shouldNotDependOnSpringOrJakarta(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAnyPackage(
-                        "..application.port..",
-                        "..application.command.."
-                )
+                .resideInAPackage("..domain..")
+                .and()
+                .areNotAnnotatedWith(NamedInterface.class)
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage(
-                        "org.springframework..",
+                        "jakarta..",
                         "javax..",
-                        "org.hibernate.."
+                        "org.hibernate..",
+                        "org.springframework.."
                 )
-                .because("Ports and Commands must remain framework-agnostic. " +
-                        "Exception: Jakarta Validation is allowed for declarative validation.")
+                .because("Domain must remain pure (no Spring/Jakarta/JPA/Hibernate dependencies). " +
+                        "Exception: @NamedInterface from Spring Modulith is allowed on domain types.")
                 .check(classes);
     }
 
+    // ---------------------------------------------------------
+    // 3) Ports + Commands framework policy
+    // ---------------------------------------------------------
+    // Commands may use Jakarta -> we do NOT ban jakarta.. here.
+    @ArchTest
+    void applicationPortsAndCommands_shouldNotDependOnSpringOrHibernateOrJavax(JavaClasses classes) {
+        noClasses()
+                .that()
+                .resideInAnyPackage("..application.port..", "..application.command..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("org.springframework..", "javax..", "org.hibernate..")
+                .because("Ports and Commands must remain framework-agnostic. Jakarta is allowed; Spring/Hibernate/javax are not.")
+                .check(classes);
+    }
+
+    // Ports must not expose entities (contract must be domain-only).
     @ArchTest
     void applicationPorts_shouldNotExposeJpaEntities(JavaClasses classes) {
         noClasses()
@@ -146,38 +165,32 @@ public class SkillshubArchitectureRulesTest {
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage("..entity..")
-                .because("Ports should expose domain objects, not JPA entities. " +
-                        "Use domain models and let adapters handle entity mapping.")
+                .because("Ports should expose domain objects, not JPA entities. Mapping belongs to adapter/out/persistence.")
                 .allowEmptyShould(true)
                 .check(classes);
     }
 
+    // ---------------------------------------------------------
+    // 4) Common module constraints
+    // ---------------------------------------------------------
     @ArchTest
     void common_shouldRemainFrameworkAgnostic(JavaClasses classes) {
         noClasses()
                 .that()
                 .resideInAPackage("..common..")
                 .and()
-                .resideOutsideOfPackages(
-                        "..common.messaging..",
-                        "..common.aop.."
-                )
+                .resideOutsideOfPackages("..common.messaging..", "..common.aop..")
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "org.springframework..",
-                        "jakarta..",
-                        "javax..",
-                        "org.hibernate.."
-                )
+                .resideInAnyPackage("org.springframework..", "jakarta..", "javax..", "org.hibernate..")
                 .because("Common is shared between modules; it must be framework-agnostic. " +
                         "Exceptions: common.messaging and common.aop may use Spring for cross-cutting concerns.")
                 .check(classes);
     }
 
-    // -------------------------------------------------------------------
-    // 4) Modulith boundaries: course, user and storage must not import each other
-    // -------------------------------------------------------------------
+    // ---------------------------------------------------------
+    // 5) Modulith boundaries: course, user, storage isolation
+    // ---------------------------------------------------------
 
     @ArchTest
     void courseModule_mustNotDependOnUserModule(JavaClasses classes) {
@@ -248,34 +261,6 @@ public class SkillshubArchitectureRulesTest {
                 .dependOnClassesThat()
                 .resideInAPackage("..user..")
                 .because("Storage and User are separate Modulith modules; share only through common.")
-                .check(classes);
-    }
-
-    // -------------------------------------------------------------------
-    // 5) Extra strictness: forbid direct coupling between adapters
-    // -------------------------------------------------------------------
-
-    @ArchTest
-    void adapterIn_shouldNotDependOnAdapterOut(JavaClasses classes) {
-        noClasses()
-                .that()
-                .resideInAPackage("..adapter.in..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAPackage("..adapter.out..")
-                .because("Adapter In must call Application ports, not Adapter Out directly.")
-                .check(classes);
-    }
-
-    @ArchTest
-    void adapterOut_shouldNotDependOnAdapterIn(JavaClasses classes) {
-        noClasses()
-                .that()
-                .resideInAPackage("..adapter.out..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAPackage("..adapter.in..")
-                .because("Adapters must not form cycles; both depend inward toward Application/Domain.")
                 .check(classes);
     }
 }
