@@ -195,12 +195,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jacoco
+          path: target/site/jacoco/
 
-      - name: SonarCloud Scan (no tests)
+      - name: SonarCloud Scan
+        env:
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
           mvn -B -Psonar verify -DskipTests sonar:sonar
-          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-          -Dsonar.organization=${{ secrets.SONAR_ORG }}
-          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.host.url=https://sonarcloud.io

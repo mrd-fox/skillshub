@@ -25,14 +25,9 @@
         <snakyaml.version>2.3</snakyaml.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <archunit-junt5.version>1.4.0</archunit-junt5.version>
-        <sonar.organization>mrd-fox</sonar.organization>
-        <sonar.projectVersion>${project.version}</sonar.projectVersion>
-        <sonar.sources>src/main/java</sonar.sources>
-        <sonar.tests>src/test/java</sonar.tests>
-        <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
 
-        <!-- ✅ chemin du rapport JaCoCo -->
-        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <!-- ⚠️ Propriétés SonarQube déplacées dans sonar-project.properties -->
+        <!-- Voir fichier : sonar-project.properties à la racine du projet -->
 
     </properties>
     <dependencies>
