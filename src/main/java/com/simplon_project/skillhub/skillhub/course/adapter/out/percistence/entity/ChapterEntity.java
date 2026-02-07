@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
@@ -14,7 +15,9 @@ import java.time.Instant;
 @Entity
 @Builder
 @Table(name = "\"chapters\"")
+@SQLRestriction("deleted_at is null")
 public class ChapterEntity extends AbstractBaseEntity {
+
     @EmbeddedId
     private EntityId chapterId;
 
@@ -37,14 +40,17 @@ public class ChapterEntity extends AbstractBaseEntity {
     private VideoEntity video = null;
 
     public void setVideo(VideoEntity videoEntity) {
-        if (this.video != null) this.video.setChapter(null);
+        if (this.video != null) {
+            this.video.setChapter(null);
+        }
         this.video = videoEntity;
-        if (videoEntity != null) videoEntity.setChapter(this);
+        if (videoEntity != null) {
+            videoEntity.setChapter(this);
+        }
     }
 
     @Override
     public EntityId getId() {
         return chapterId;
     }
-
 }

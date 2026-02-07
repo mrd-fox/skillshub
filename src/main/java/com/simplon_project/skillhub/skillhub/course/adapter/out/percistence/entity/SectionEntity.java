@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -26,6 +27,7 @@ import java.util.Set;
 @Getter
 @Setter
 @ToString
+@SQLRestriction("deleted_at is null")
 public class SectionEntity extends AbstractBaseEntity {
 
     @EmbeddedId
@@ -49,7 +51,6 @@ public class SectionEntity extends AbstractBaseEntity {
     @OrderBy("position ASC")
     @Builder.Default
     private Set<ChapterEntity> chapters = new HashSet<>();
-
 
     @Override
     public EntityId getId() {

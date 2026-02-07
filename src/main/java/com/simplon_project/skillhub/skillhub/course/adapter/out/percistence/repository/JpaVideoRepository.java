@@ -13,6 +13,8 @@ public interface JpaVideoRepository extends JpaRepository<VideoEntity, EntityId>
                 SELECT CASE WHEN COUNT(v) > 0 THEN true ELSE false END
                 FROM VideoEntity v
                 WHERE v.chapter.chapterId = :chapterId
+                  AND v.deletedAt IS NULL
+                  AND v.chapter.deletedAt IS NULL
             """)
     boolean existsByChapterId(@Param("chapterId") EntityId chapterId);
 }

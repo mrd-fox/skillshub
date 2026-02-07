@@ -5,6 +5,7 @@ import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
@@ -16,16 +17,15 @@ import java.time.Instant;
 @Getter
 @Setter
 @EqualsAndHashCode(callSuper = true)
+@SQLRestriction("deleted_at is null")
 public class VideoEntity extends AbstractBaseEntity {
 
     @EmbeddedId
     private EntityId videoId;
 
-    // Legacy MinIO/S3 storage key (optional). Keep nullable to support Vimeo-only flows.
     @Column(name = "storage_key")
     private String storageKey;
 
-    // Canonical provider-agnostic URI (required, unique).
     @Column(name = "source_uri", nullable = false, unique = true, length = 512)
     private String sourceUri;
 
@@ -57,7 +57,6 @@ public class VideoEntity extends AbstractBaseEntity {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
-    // External deletion tracking (Option B strategy)
     @Enumerated(EnumType.STRING)
     @Column(name = "external_deletion_status", nullable = false, length = 50)
     @Builder.Default
@@ -73,14 +72,9 @@ public class VideoEntity extends AbstractBaseEntity {
     @Column(name = "delete_last_error", columnDefinition = "TEXT")
     private String deleteLastError;
 
-    // Soft delete support (Option B strategy) - same as courses/sections/chapters
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    /**
-     * A chapter can have 0..1 video. Video is associated after init/upload flow.
-     * Keep nullable=true to allow PENDING rows before linkage.
-     */
     @OneToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(
             name = "chapter_id",

@@ -12,10 +12,16 @@ import java.util.Optional;
 
 @Repository
 public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityId> {
+
     Optional<CourseEntity> findById(EntityId id);
 
     Optional<CourseEntity> findByTitle(String title);
 
+    /**
+     * Tree load (sections + chapters + video).
+     * Child filtering is enforced by @SQLRestriction on Section/Chapter/Video.
+     * DO NOT filter children in WHERE, otherwise parent rows disappear when deleted children exist.
+     */
     @Query("""
                 select distinct c
                 from CourseEntity c
@@ -24,15 +30,9 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 left join fetch ch.video v
                 where c.courseId = :id
                   and c.deletedAt is null
-                  and (s is null or s.deletedAt is null)
-                  and (ch is null or ch.deletedAt is null)
-                  and (v is null or v.deletedAt is null)
             """)
     Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
 
-    // =========================
-    // Public catalog - LIST (metadata only)
-    // =========================
     @Query("""
                 select c
                 from CourseEntity c
@@ -42,9 +42,10 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
             """)
     List<CourseEntity> findAllForPublicCatalog();
 
-    // =========================
-    // Public catalog - DETAIL (sections + chapters, NO video)
-    // =========================
+    /**
+     * Public tree (sections + chapters, NO video).
+     * Child filtering is enforced by @SQLRestriction on Section/Chapter.
+     */
     @Query("""
                 select distinct c
                 from CourseEntity c
@@ -52,14 +53,9 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 left join fetch s.chapters ch
                 where c.courseId = :id
                   and c.deletedAt is null
-                  and (s is null or s.deletedAt is null)
-                  and (ch is null or ch.deletedAt is null)
             """)
     Optional<CourseEntity> findByIdWithPublicTree(@Param("id") EntityId id);
 
-    // =========================
-    // Existing query used elsewhere (kept as-is)
-    // =========================
     @Query("""
                 select c
                 from CourseEntity c
