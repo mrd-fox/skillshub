@@ -1,0 +1,103 @@
+databaseChangeLog:
+  # SH-166 - Create outbox table for reliable async event publishing (Vimeo deletion workflow)
+  - changeSet:
+      id: SH-166-005-create-outbox-events-table
+      author: Marina DARDE
+      changes:
+        - createTable:
+            tableName: outbox_events
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: event_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: aggregate_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: aggregate_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+
+              # Stored as a JSON string (TEXT) for portability.
+              - column:
+                  name: payload
+                  type: TEXT
+                  constraints:
+                    nullable: false
+
+              # Validated by application code (enum), stored as string.
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: sent_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+
+              - column:
+                  name: retry_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: last_error
+                  type: TEXT
+                  constraints:
+                    nullable: true
+
+        # Index for efficient polling of pending events (status, created_at)
+        - createIndex:
+            indexName: idx_outbox_events_status_created_at
+            tableName: outbox_events
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+
+        # Index for querying events by aggregate (aggregate_type, aggregate_id)
+        - createIndex:
+            indexName: idx_outbox_events_aggregate
+            tableName: outbox_events
+            columns:
+              - column:
+                  name: aggregate_type
+              - column:
+                  name: aggregate_id
+
+      rollback:
+        - dropIndex:
+            indexName: idx_outbox_events_aggregate
+            tableName: outbox_events
+        - dropIndex:
+            indexName: idx_outbox_events_status_created_at
+            tableName: outbox_events
+        - dropTable:
+            tableName: outbox_events
