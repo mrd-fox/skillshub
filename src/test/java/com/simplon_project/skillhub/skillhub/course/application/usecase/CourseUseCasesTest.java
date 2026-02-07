@@ -5,6 +5,7 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.Course
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
@@ -828,6 +829,7 @@ public class CourseUseCasesTest {
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.READY)
                     .duration(3600L)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()
@@ -896,6 +898,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.PROCESSING)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()
@@ -934,6 +937,7 @@ public class CourseUseCasesTest {
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.FAILED)
                     .errorMessage("Upload failed")
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()

@@ -30,7 +30,8 @@ public class VideoInfoEntityMapper {
                 entity.getThumbnailUrl(),
                 entity.getEmbedHash(),
                 entity.getErrorMessage(),
-                entity.getStatus()
+                entity.getStatus(),
+                entity.getExternalDeletionStatus()
         );
         context.storeMappedInstance(entity, domain);
         return domain;
@@ -61,6 +62,7 @@ public class VideoInfoEntityMapper {
                 .embedHash(domain.embedHash())
                 .errorMessage(domain.errorMessage())
                 .status(domain.status())
+                .externalDeletionStatus(domain.externalDeletionStatus())
                 .build();
 
         context.storeMappedInstance(domain, entity);

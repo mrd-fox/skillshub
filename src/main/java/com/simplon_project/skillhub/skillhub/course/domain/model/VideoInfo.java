@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.domain.model;
 
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import lombok.Builder;
 
@@ -16,7 +17,8 @@ public record VideoInfo(
         String thumbnailUrl,       // can be null
         String embedHash,          // can be null (used for unlisted Vimeo videos)
         String errorMessage,       // can be null
-        VideoStatusEnum status     // required
+        VideoStatusEnum status,    // required
+        ExternalDeletionStatus externalDeletionStatus // tracks external platform deletion state
 ) {
     public VideoInfo markProcessing() {
 
@@ -39,6 +41,7 @@ public record VideoInfo(
                 .embedHash(this.embedHash)
                 .errorMessage(null)
                 .status(VideoStatusEnum.PROCESSING)
+                .externalDeletionStatus(this.externalDeletionStatus)
                 .build();
     }
 
@@ -71,6 +74,7 @@ public record VideoInfo(
                 .embedHash(embedHash != null ? embedHash : this.embedHash)
                 .errorMessage(null)
                 .status(VideoStatusEnum.READY)
+                .externalDeletionStatus(this.externalDeletionStatus)
                 .build();
     }
 
@@ -98,6 +102,7 @@ public record VideoInfo(
                 .embedHash(this.embedHash)
                 .errorMessage(errorMessage)
                 .status(VideoStatusEnum.FAILED)
+                .externalDeletionStatus(this.externalDeletionStatus)
                 .build();
     }
 
@@ -127,6 +132,7 @@ public record VideoInfo(
                 .embedHash(this.embedHash)
                 .errorMessage(finalError)
                 .status(VideoStatusEnum.EXPIRED)
+                .externalDeletionStatus(this.externalDeletionStatus)
                 .build();
     }
 

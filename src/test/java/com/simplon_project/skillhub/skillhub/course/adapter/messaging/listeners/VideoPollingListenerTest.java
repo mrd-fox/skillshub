@@ -7,6 +7,7 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.VideoP
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoInfoByIdPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderPollingPort;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
@@ -98,6 +99,7 @@ class VideoPollingListenerTest {
                 .id(Id.of(VIDEO_ID))
                 .sourceUri(SOURCE_URI)
                 .status(VideoStatusEnum.PROCESSING)
+                .externalDeletionStatus(ExternalDeletionStatus.NONE)
                 .build();
     }
 
@@ -106,6 +108,7 @@ class VideoPollingListenerTest {
                 .id(Id.of(VIDEO_ID))
                 .sourceUri(SOURCE_URI)
                 .status(VideoStatusEnum.READY)
+                .externalDeletionStatus(ExternalDeletionStatus.NONE)
                 .build();
     }
 
@@ -115,6 +118,7 @@ class VideoPollingListenerTest {
                 .sourceUri(SOURCE_URI)
                 .status(VideoStatusEnum.FAILED)
                 .errorMessage("Some error")
+                .externalDeletionStatus(ExternalDeletionStatus.NONE)
                 .build();
     }
 

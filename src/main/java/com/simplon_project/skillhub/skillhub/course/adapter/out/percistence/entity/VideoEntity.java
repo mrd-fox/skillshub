@@ -1,9 +1,12 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity;
 
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "\"videos\"")
@@ -53,6 +56,22 @@ public class VideoEntity extends AbstractBaseEntity {
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    // External deletion tracking (Option B strategy)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "external_deletion_status", nullable = false, length = 50)
+    @Builder.Default
+    private ExternalDeletionStatus externalDeletionStatus = ExternalDeletionStatus.NONE;
+
+    @Column(name = "delete_requested_at")
+    private Instant deleteRequestedAt;
+
+    @Column(name = "delete_attempt_count", nullable = false)
+    @Builder.Default
+    private Integer deleteAttemptCount = 0;
+
+    @Column(name = "delete_last_error", columnDefinition = "TEXT")
+    private String deleteLastError;
 
     /**
      * A chapter can have 0..1 video. Video is associated after init/upload flow.

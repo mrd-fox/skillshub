@@ -10,6 +10,7 @@ import com.simplon_project.skillhub.skillhub.course.application.port.out.video.C
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.EnqueueVideoPollingRequestPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import org.junit.jupiter.api.DisplayName;
@@ -146,6 +147,7 @@ class VideoUseCasesTest {
                 .id(Id.of(VIDEO_ID))
                 .sourceUri(SOURCE_URI)
                 .status(VideoStatusEnum.PENDING)
+                .externalDeletionStatus(ExternalDeletionStatus.NONE)
                 .build();
     }
 
@@ -154,6 +156,7 @@ class VideoUseCasesTest {
                 .id(Id.of(VIDEO_ID))
                 .sourceUri(SOURCE_URI)
                 .status(VideoStatusEnum.PROCESSING)
+                .externalDeletionStatus(ExternalDeletionStatus.NONE)
                 .build();
     }
 
@@ -579,6 +582,7 @@ class VideoUseCasesTest {
                     .id(Id.of(VIDEO_ID))
                     .sourceUri(null)
                     .status(VideoStatusEnum.PENDING)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
             chapter.setVideo(videoWithoutSourceUri);
 
@@ -603,6 +607,7 @@ class VideoUseCasesTest {
                     .id(Id.of(VIDEO_ID))
                     .sourceUri("   ")
                     .status(VideoStatusEnum.PENDING)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
             chapter.setVideo(videoWithBlankSourceUri);
 

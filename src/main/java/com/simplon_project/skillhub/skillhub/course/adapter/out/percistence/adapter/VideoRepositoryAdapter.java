@@ -109,6 +109,7 @@ public class VideoRepositoryAdapter implements
         entity.setEmbedHash(videoInfo.embedHash());
         entity.setErrorMessage(videoInfo.errorMessage());
         entity.setStatus(videoInfo.status());
+        entity.setExternalDeletionStatus(videoInfo.externalDeletionStatus());
 
         VideoEntity saved = jpaRepository.save(entity);
 
