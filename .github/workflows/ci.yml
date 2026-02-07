@@ -196,12 +196,15 @@ jobs:
         with:
           name: jacoco
           path: target/site/jacoco/
-
+      - name: Verify JaCoCo XML present
+        run: |
+          ls -la target/site/jacoco
+          test -f target/site/jacoco/jacoco.xml
       - name: SonarCloud Scan
         run: >
-          mvn -B -Psonar verify -DskipTests sonar:sonar
+          mvn -B -Psonar -DskipTests sonar:sonar
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
           -Dsonar.organization=${{ secrets.SONAR_ORG }}
           -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }}
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
