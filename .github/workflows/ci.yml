@@ -200,6 +200,8 @@ jobs:
         run: |
           ls -la target/site/jacoco
           test -f target/site/jacoco/jacoco.xml
+      - name: Compile (no tests) to produce bytecode
+        run: mvn -B -DskipTests compile
       - name: SonarCloud Scan
         run: >
           mvn -B -Psonar -DskipTests sonar:sonar
