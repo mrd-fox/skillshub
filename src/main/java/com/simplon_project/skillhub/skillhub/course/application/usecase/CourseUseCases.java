@@ -5,9 +5,11 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.Course
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.AccessLevelEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
@@ -45,6 +47,8 @@ public class CourseUseCases implements
 
     private final LoadCourseStructurePort loadCourseStructurePort;
     private final LoadCourseWithVideoPort loadCourseWithVideoPort;
+
+    private final EnqueueOutboxEventPort enqueueOutboxEventPort;
 
 
     @Transactional("courseTxManager")
@@ -221,6 +225,20 @@ public class CourseUseCases implements
                 .filter(s -> s.getId() != null)
                 .collect(Collectors.toMap(Section::getId, Function.identity(), (a, b) -> a));
 
+        // Collect IDs from patch to detect removals
+        Set<Id> patchSectionIds = patchSections.stream()
+                .map(UpdateSectionCommand::mapToDomain)
+                .map(Section::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // Soft delete removed sections (and their chapters/videos)
+        for (Section existing : existingById.values()) {
+            if (!patchSectionIds.contains(existing.getId())) {
+                softDeleteSection(existing);
+            }
+        }
+
         for (UpdateSectionCommand sectionCmd : patchSections) {
 
             Section patch = sectionCmd.mapToDomain();
@@ -252,11 +270,96 @@ public class CourseUseCases implements
         }
     }
 
+    /**
+     * Soft delete a section and all its chapters/videos.
+     * Marks section with deletedAt timestamp and processes chapters recursively.
+     */
+    private void softDeleteSection(Section section) {
+        section.markAsDeleted();
+
+        // Soft delete all chapters in this section
+        for (Chapter chapter : safeChapters(section)) {
+            softDeleteChapter(chapter);
+        }
+    }
+
+    /**
+     * Soft delete a chapter and its video.
+     * Marks chapter with deletedAt timestamp and enqueues outbox event for video deletion.
+     */
+    private void softDeleteChapter(Chapter chapter) {
+        chapter.markAsDeleted();
+
+        // If chapter has a video, mark it for external deletion
+        VideoInfo video = chapter.getVideo();
+        if (video != null) {
+            VideoInfo updatedVideo = softDeleteVideo(video);
+            chapter.setVideo(updatedVideo);
+        }
+    }
+
+    /**
+     * Soft delete a video and enqueue external deletion request.
+     * Marks video with deletedAt timestamp (soft delete) and externalDeletionStatus=REQUESTED.
+     * Creates outbox event for async external platform deletion.
+     * Returns the updated VideoInfo.
+     * <p>
+     * Note: The video will be persisted later via updateCourseStructure() which saves
+     * the entire course tree, so we don't save it directly here to avoid double persistence.
+     */
+    private VideoInfo softDeleteVideo(VideoInfo video) {
+        // Mark video as deleted (like sections and chapters)
+        // Note: VideoInfo is immutable, so we need to rebuild it
+
+        // Create updated video with:
+        // 1. deletedAt timestamp (soft delete)
+        // 2. externalDeletionStatus = REQUESTED (for external platform deletion)
+        VideoInfo updatedVideo = VideoInfo.builder()
+                .id(video.id())
+                .sourceUri(video.sourceUri())
+                .key(video.key())
+                .duration(video.duration())
+                .format(video.format())
+                .size(video.size())
+                .width(video.width())
+                .height(video.height())
+                .thumbnailUrl(video.thumbnailUrl())
+                .embedHash(video.embedHash())
+                .errorMessage(video.errorMessage())
+                .status(video.status())
+                .externalDeletionStatus(ExternalDeletionStatus.REQUESTED)
+                .deletedAt(java.time.Instant.now())  // Soft delete like sections/chapters
+                .build();
+
+        // Enqueue outbox event for async external deletion (must be done BEFORE course persistence)
+        enqueueOutboxEventPort.enqueueVideoDeletionRequested(
+                video.id(),
+                video.sourceUri()
+        );
+
+        // Return updated video - it will be persisted by updateCourseStructure() at the end
+        return updatedVideo;
+    }
+
     private void applyChaptersPatch(Section section, List<UpdateChapterCommand> patchChapters) {
 
         Map<Id, Chapter> existingById = safeChapters(section).stream()
                 .filter(c -> c.getId() != null)
                 .collect(Collectors.toMap(Chapter::getId, Function.identity(), (a, b) -> a));
+
+        // Collect IDs from patch to detect removals
+        Set<Id> patchChapterIds = patchChapters.stream()
+                .map(UpdateChapterCommand::mapToDomain)
+                .map(Chapter::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // Soft delete removed chapters (and their videos)
+        for (Chapter existing : existingById.values()) {
+            if (!patchChapterIds.contains(existing.getId())) {
+                softDeleteChapter(existing);
+            }
+        }
 
         for (UpdateChapterCommand chapterCmd : patchChapters) {
 

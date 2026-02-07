@@ -23,6 +23,10 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 left join fetch s.chapters ch
                 left join fetch ch.video v
                 where c.courseId = :id
+                  and c.deletedAt is null
+                  and (s is null or s.deletedAt is null)
+                  and (ch is null or ch.deletedAt is null)
+                  and (v is null or v.deletedAt is null)
             """)
     Optional<CourseEntity> findByIdWithTree(@Param("id") EntityId id);
 
@@ -33,6 +37,7 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 select c
                 from CourseEntity c
                 where c.status = 'PUBLISHED'
+                  and c.deletedAt is null
                 order by c.createdAt desc
             """)
     List<CourseEntity> findAllForPublicCatalog();
@@ -46,6 +51,9 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 left join fetch c.sections s
                 left join fetch s.chapters ch
                 where c.courseId = :id
+                  and c.deletedAt is null
+                  and (s is null or s.deletedAt is null)
+                  and (ch is null or ch.deletedAt is null)
             """)
     Optional<CourseEntity> findByIdWithPublicTree(@Param("id") EntityId id);
 
@@ -56,6 +64,7 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 select c
                 from CourseEntity c
                 where c.externalUserId = :externalUserId
+                  and c.deletedAt is null
                 order by c.createdAt desc
             """)
     List<CourseEntity> findByExternalUserId(@Param("externalUserId") String externalUserId);

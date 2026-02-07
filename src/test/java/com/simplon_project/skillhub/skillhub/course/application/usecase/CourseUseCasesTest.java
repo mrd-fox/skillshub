@@ -4,6 +4,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repo
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
@@ -23,10 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -58,6 +56,9 @@ public class CourseUseCasesTest {
 
     @Mock
     private LoadCourseWithVideoPort loadCourseWithVideoPort;
+
+    @Mock
+    private EnqueueOutboxEventPort enqueueOutboxEventPort;
 
     @InjectMocks
     private CourseUseCases courseUseCases;
@@ -968,6 +969,190 @@ public class CourseUseCasesTest {
 
             section.setCourse(course);
             return course;
+        }
+    }
+
+    // ========================================================================
+    // SOFT DELETE TESTS (SH-166 STEP 2)
+    // ========================================================================
+    @Nested
+    @DisplayName("updateCourse - Soft Delete")
+    class UpdateCourseSoftDelete {
+
+        @Test
+        @DisplayName("should soft delete video and enqueue outbox event when chapter is removed")
+        void updateCourse_whenChapterRemoved_shouldSoftDeleteVideoAndEnqueueOutboxEvent() {
+            // GIVEN
+            String videoId = UUID.randomUUID().toString();
+            String sourceUri = "vimeo://123456";
+
+            VideoInfo video = VideoInfo.builder()
+                    .id(Id.of(videoId))
+                    .sourceUri(sourceUri)
+                    .status(VideoStatusEnum.READY)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            Chapter chapter = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(video)
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(new java.util.HashSet<>(Set.of(chapter)))
+                    .build();
+
+            chapter.setSection(section);
+
+            Course existingCourse = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(new java.util.HashSet<>(Set.of(section)))
+                    .build();
+
+            section.setCourse(existingCourse);
+
+            // Update command with empty chapters list (removing the chapter)
+            UpdateChapterCommand emptyChapters = UpdateChapterCommand.builder()
+                    .id(UUID.randomUUID().toString()) // Different ID = chapter removed
+                    .title("New Chapter")
+                    .position(1)
+                    .build();
+
+            UpdateSectionCommand updatedSection = UpdateSectionCommand.builder()
+                    .id(section.getId().asString())
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(List.of(emptyChapters)) // Chapter removed
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(updatedSection))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            // Verify outbox event was enqueued
+            ArgumentCaptor<Id> idCaptor = ArgumentCaptor.forClass(Id.class);
+            ArgumentCaptor<String> uriCaptor = ArgumentCaptor.forClass(String.class);
+            verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(idCaptor.capture(), uriCaptor.capture());
+            assertEquals(videoId, idCaptor.getValue().asString());
+            assertEquals(sourceUri, uriCaptor.getValue());
+
+            // Verify chapter was soft deleted
+            assertNotNull(chapter.getDeletedAt());
+
+            // Verify video was marked for external deletion (checked via the updated VideoInfo in chapter)
+            VideoInfo updatedVideo = chapter.getVideo();
+            assertNotNull(updatedVideo);
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo.externalDeletionStatus());
+            assertNotNull(updatedVideo.deletedAt());
+        }
+
+        @Test
+        @DisplayName("should soft delete section with all chapters and videos when section is removed")
+        void updateCourse_whenSectionRemoved_shouldSoftDeleteSectionChaptersAndVideos() {
+            // GIVEN
+            String video1Id = UUID.randomUUID().toString();
+            String video2Id = UUID.randomUUID().toString();
+            String sourceUri1 = "vimeo://111111";
+            String sourceUri2 = "vimeo://222222";
+
+            VideoInfo video1 = VideoInfo.builder()
+                    .id(Id.of(video1Id))
+                    .sourceUri(sourceUri1)
+                    .status(VideoStatusEnum.READY)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            VideoInfo video2 = VideoInfo.builder()
+                    .id(Id.of(video2Id))
+                    .sourceUri(sourceUri2)
+                    .status(VideoStatusEnum.READY)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            Chapter chapter1 = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 1")
+                    .position(1)
+                    .video(video1)
+                    .build();
+
+            Chapter chapter2 = Chapter.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Chapter 2")
+                    .position(2)
+                    .video(video2)
+                    .build();
+
+            Section section = Section.builder()
+                    .id(Id.of(UUID.randomUUID().toString()))
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(new java.util.HashSet<>(Set.of(chapter1, chapter2)))
+                    .build();
+
+            chapter1.setSection(section);
+            chapter2.setSection(section);
+
+            Course existingCourse = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(new HashSet<>(Set.of(section)))
+                    .build();
+
+            section.setCourse(existingCourse);
+
+            // Update command with empty sections list (removing the section)
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of()) // Section removed
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            // Verify section was soft deleted
+            assertNotNull(section.getDeletedAt());
+
+            // Verify both chapters were soft deleted
+            assertNotNull(chapter1.getDeletedAt());
+            assertNotNull(chapter2.getDeletedAt());
+
+            // Verify both videos were marked with REQUESTED status and deletedAt
+            VideoInfo updatedVideo1 = chapter1.getVideo();
+            VideoInfo updatedVideo2 = chapter2.getVideo();
+            assertNotNull(updatedVideo1);
+            assertNotNull(updatedVideo2);
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo1.externalDeletionStatus());
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo2.externalDeletionStatus());
+            assertNotNull(updatedVideo1.deletedAt());
+            assertNotNull(updatedVideo2.deletedAt());
+
+            // Verify outbox events were enqueued for both videos
+            verify(enqueueOutboxEventPort, times(2)).enqueueVideoDeletionRequested(any(Id.class), anyString());
         }
     }
 }

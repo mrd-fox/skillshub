@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
+
 @SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -26,7 +28,11 @@ public class ChapterEntity extends AbstractBaseEntity {
     @Column(name = "position", nullable = false)
     private Integer position;
 
-    @OneToOne(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Soft delete support (Option B strategy)
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @OneToOne(mappedBy = "chapter", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private VideoEntity video = null;
 

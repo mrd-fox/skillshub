@@ -73,6 +73,10 @@ public class VideoEntity extends AbstractBaseEntity {
     @Column(name = "delete_last_error", columnDefinition = "TEXT")
     private String deleteLastError;
 
+    // Soft delete support (Option B strategy) - same as courses/sections/chapters
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     /**
      * A chapter can have 0..1 video. Video is associated after init/upload flow.
      * Keep nullable=true to allow PENDING rows before linkage.

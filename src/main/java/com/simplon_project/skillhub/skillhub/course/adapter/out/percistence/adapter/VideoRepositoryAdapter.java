@@ -10,6 +10,7 @@ import com.simplon_project.skillhub.skillhub.course.application.port.out.chapter
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.CreatePendingVideoForChapterPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoInfoByIdPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoInfoPort;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.course.domain.model.VideoInfo;
@@ -98,7 +99,7 @@ public class VideoRepositoryAdapter implements
                 .orElseThrow(() -> new IllegalStateException("Video not found: " + videoInfo.id().asString()));
 
         // Persisted fields
-        entity.setStorageKey(videoInfo.key()); // VideoInfo.key maps to VideoEntity.storageKey
+        entity.setStorageKey(videoInfo.key());
         entity.setSourceUri(videoInfo.sourceUri());
         entity.setFormat(videoInfo.format());
         entity.setSize(videoInfo.size());
@@ -110,6 +111,16 @@ public class VideoRepositoryAdapter implements
         entity.setErrorMessage(videoInfo.errorMessage());
         entity.setStatus(videoInfo.status());
         entity.setExternalDeletionStatus(videoInfo.externalDeletionStatus());
+        entity.setDeletedAt(videoInfo.deletedAt());  // Soft delete timestamp
+
+        // If external deletion is requested, update tracking fields
+        if (videoInfo.externalDeletionStatus() == ExternalDeletionStatus.REQUESTED) {
+            if (entity.getDeleteRequestedAt() == null) {
+                entity.setDeleteRequestedAt(java.time.Instant.now());
+                entity.setDeleteAttemptCount(0);
+                entity.setDeleteLastError(null);
+            }
+        }
 
         VideoEntity saved = jpaRepository.save(entity);
 

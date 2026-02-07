@@ -4,6 +4,8 @@ import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletio
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import lombok.Builder;
 
+import java.time.Instant;
+
 @Builder
 public record VideoInfo(
         Id id,
@@ -18,7 +20,8 @@ public record VideoInfo(
         String embedHash,          // can be null (used for unlisted Vimeo videos)
         String errorMessage,       // can be null
         VideoStatusEnum status,    // required
-        ExternalDeletionStatus externalDeletionStatus // tracks external platform deletion state
+        ExternalDeletionStatus externalDeletionStatus, // tracks external platform deletion state
+        Instant deletedAt          // soft delete timestamp (can be null)
 ) {
     public VideoInfo markProcessing() {
 
@@ -42,6 +45,7 @@ public record VideoInfo(
                 .errorMessage(null)
                 .status(VideoStatusEnum.PROCESSING)
                 .externalDeletionStatus(this.externalDeletionStatus)
+                .deletedAt(this.deletedAt)
                 .build();
     }
 
@@ -75,6 +79,7 @@ public record VideoInfo(
                 .errorMessage(null)
                 .status(VideoStatusEnum.READY)
                 .externalDeletionStatus(this.externalDeletionStatus)
+                .deletedAt(this.deletedAt)
                 .build();
     }
 
@@ -103,6 +108,7 @@ public record VideoInfo(
                 .errorMessage(errorMessage)
                 .status(VideoStatusEnum.FAILED)
                 .externalDeletionStatus(this.externalDeletionStatus)
+                .deletedAt(this.deletedAt)
                 .build();
     }
 
@@ -133,6 +139,7 @@ public record VideoInfo(
                 .errorMessage(finalError)
                 .status(VideoStatusEnum.EXPIRED)
                 .externalDeletionStatus(this.externalDeletionStatus)
+                .deletedAt(this.deletedAt)
                 .build();
     }
 
