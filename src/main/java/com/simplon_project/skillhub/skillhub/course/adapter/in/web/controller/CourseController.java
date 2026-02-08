@@ -60,14 +60,30 @@ public class CourseController {
     @ResponseStatus(HttpStatus.OK)
     @Operation(
             summary = "Update a course (PATCH-like payload)",
-            description = "Updates course fields and optionally applies sections/chapters patch. "
-                    + "If section/chapter id is null => create. If id is present => update."
+            description =
+                    """
+                            Updates course fields and optionally applies a PATCH-like sections/chapters payload.
+                            
+                            PATCH SEMANTICS (IMPORTANT):
+                            - If 'sections' is omitted (null): no changes are applied to sections/chapters.
+                            - If 'sections' is provided (even empty):
+                              - existing sections missing from the payload are SOFT-DELETED.
+                              - sections with id=null are CREATED.
+                              - sections with id!=null are UPDATED.
+                            
+                            For each provided section:
+                            - If 'chapters' is omitted (null): no changes are applied to chapters for that section.
+                            - If 'chapters' is provided (even empty):
+                              - existing chapters missing from the payload are SOFT-DELETED.
+                              - chapters with id=null are CREATED.
+                              - chapters with id!=null are UPDATED.
+                            """
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "Course updated",
-                    content = @Content(schema = @Schema(implementation = CourseResponse.class))
+                    content = @Content(mediaType = "application/json")
             ),
             @ApiResponse(responseCode = "400", description = "Invalid request"),
             @ApiResponse(responseCode = "401", description = "Missing user context"),
@@ -86,13 +102,10 @@ public class CourseController {
 
             @RequestBody @Valid @NotNull UpdateCourseRequest request
     ) {
-
         var command = request.mapToCommand(courseId, externalAuthorId, rawRoles);
         var updatedCourse = updateCoursePort.updateCourse(command);
-
         return CourseResponseMapper.mapToCourseResponse(updatedCourse);
     }
-
 
     @PostMapping("courses/{courseId}/sections/{sectionId}/chapters")
     @Operation(description = "Create a draft of chapter")
