@@ -1,7 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.simplon_project.skillhub.skillhub.common.messaging.RabbitConnectionProps;
+import com.simplon_project.skillhub.skillhub.common.messaging.RabbitCommonConnectionProps;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -25,14 +24,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 @EnableConfigurationProperties({
         RabbitCourseProps.class,
-        RabbitCourseVideoPollingProps.class
+        RabbitCourseVideoPollingProps.class,
+        RabbitCourseVideoDeletionProps.class
 })
 public class RabbitCourseConfig {
 
-    private final RabbitConnectionProps connectionProps;
+    private final RabbitCommonConnectionProps connectionProps;
     private final RabbitCourseProps rabbitCourseProps;
     private final RabbitCourseVideoPollingProps pollingProps;
-    private final ObjectMapper objectMapper;
+    private final RabbitCourseVideoDeletionProps deletionProps;
 
     @Bean(name = "courseRabbitListenerContainerFactory")
     public SimpleRabbitListenerContainerFactory courseRabbitListenerContainerFactory(
@@ -91,7 +91,7 @@ public class RabbitCourseConfig {
 
     @Bean(name = "courseMessageConverter")
     public Jackson2JsonMessageConverter messageConverter() {
-        return new Jackson2JsonMessageConverter(objectMapper);
+        return new Jackson2JsonMessageConverter();
     }
 
     @Bean(name = "courseRabbitTemplate")
@@ -133,17 +133,6 @@ public class RabbitCourseConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
-    public Binding courseVideoPollingBinding(
-            @Qualifier("courseVideoPollingQueue") Queue pollingQueue,
-            @Qualifier("courseExchange") TopicExchange courseExchange
-    ) {
-        return BindingBuilder.bind(pollingQueue)
-                .to(courseExchange)
-                .with(pollingProps.getPollingRoutingKey());
-    }
-
-    @Bean
-    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
     public Binding courseVideoPollingDelayBinding(
             @Qualifier("courseVideoPollingDelayQueue") Queue delayQueue,
             @Qualifier("courseExchange") TopicExchange courseExchange
@@ -151,5 +140,65 @@ public class RabbitCourseConfig {
         return BindingBuilder.bind(delayQueue)
                 .to(courseExchange)
                 .with(pollingProps.getPollingDelayRoutingKey());
+    }
+
+    // -----------------------------
+    // Video deletion infra (STEP 3)
+    // Enabled only when: course.rabbitmq.video-deletion.enabled=true
+    // -----------------------------
+
+    @Bean(name = "courseVideoDeletionQueue")
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-deletion", name = "enabled", havingValue = "true")
+    public Queue courseVideoDeletionQueue() {
+        return new Queue(deletionProps.getDeletionQueue(), true);
+    }
+
+    /**
+     * Delay queue with DLX for deletion retry backoff:
+     * - messages are published here with a PER-MESSAGE TTL (expiration)
+     * - once expired, Rabbit dead-letters them back to the main exchange using deletionRoutingKey
+     */
+    @Bean(name = "courseVideoDeletionDelayQueue")
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-deletion", name = "enabled", havingValue = "true")
+    public Queue courseVideoDeletionDelayQueue(@Qualifier("courseExchange") TopicExchange courseExchange) {
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", courseExchange.getName());
+        args.put("x-dead-letter-routing-key", deletionProps.getDeletionRoutingKey());
+
+        return new Queue(deletionProps.getDeletionDelayQueue(), true, false, false, args);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-deletion", name = "enabled", havingValue = "true")
+    public Binding courseVideoDeletionBinding(
+            @Qualifier("courseVideoDeletionQueue") Queue deletionQueue,
+            @Qualifier("courseExchange") TopicExchange courseExchange
+    ) {
+        return BindingBuilder.bind(deletionQueue)
+                .to(courseExchange)
+                .with(deletionProps.getDeletionRoutingKey());
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-deletion", name = "enabled", havingValue = "true")
+    public Binding courseVideoDeletionDelayBinding(
+            @Qualifier("courseVideoDeletionDelayQueue") Queue delayQueue,
+            @Qualifier("courseExchange") TopicExchange courseExchange
+    ) {
+        return BindingBuilder.bind(delayQueue)
+                .to(courseExchange)
+                .with(deletionProps.getDeletionDelayRoutingKey());
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "course.rabbitmq.video-polling", name = "enabled", havingValue = "true")
+    public Binding courseVideoPollingBinding(
+            @Qualifier("courseVideoPollingQueue") Queue pollingQueue,
+            @Qualifier("courseExchange") TopicExchange courseExchange
+    ) {
+        return BindingBuilder.bind(pollingQueue)
+                .to(courseExchange)
+                .with(pollingProps.getPollingRoutingKey());
     }
 }

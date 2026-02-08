@@ -301,7 +301,7 @@ public class CourseUseCasesTest {
 
             var updateCommand = UpdateCourseCommand.builder()
                     .courseId(COURSE_ID_STRING)
-                    .externalAuthorId(OTHER_USER_ID)  // Different user
+                    .externalAuthorId(OTHER_USER_ID)
                     .rawRoles(RAW_ROLES_TUTOR)
                     .title("New Title")
                     .build();
@@ -322,7 +322,7 @@ public class CourseUseCasesTest {
 
             var updateCommand = UpdateCourseCommand.builder()
                     .courseId(COURSE_ID_STRING)
-                    .externalAuthorId(OTHER_USER_ID)  // Different user but ADMIN
+                    .externalAuthorId(OTHER_USER_ID)
                     .rawRoles(RAW_ROLES_ADMIN)
                     .title(newTitle)
                     .build();
@@ -473,7 +473,7 @@ public class CourseUseCasesTest {
         void getCourse_asPublic_onDraftCourse_shouldThrowException() {
             // GIVEN
             var command = new GetCourseCommand(OTHER_USER_ID, Set.of(UserRole.STUDENT), COURSE_ID_STRING);
-            var draftCourse = buildCourse(); // DRAFT status
+            var draftCourse = buildCourse();
 
             when(loadCourseStructurePort.loadStructure(any(Id.class))).thenReturn(draftCourse);
 
@@ -658,7 +658,7 @@ public class CourseUseCasesTest {
                     .build();
 
             Course courseWithVideo = buildPublishableCourse();
-            courseWithVideo.setExternalUserId(EXTERNAL_AUTHOR_ID); // Different owner
+            courseWithVideo.setExternalUserId(EXTERNAL_AUTHOR_ID);
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
 
@@ -868,7 +868,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .title("Chapter 1")
                     .position(1)
-                    .video(null) // No video
+                    .video(null)
                     .build();
 
             Section section = Section.builder()
@@ -1004,7 +1004,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .title("Section 1")
                     .position(1)
-                    .chapters(new java.util.HashSet<>(Set.of(chapter)))
+                    .chapters(new HashSet<>(Set.of(chapter)))
                     .build();
 
             chapter.setSection(section);
@@ -1013,23 +1013,17 @@ public class CourseUseCasesTest {
                     .id(Id.of(COURSE_ID_STRING))
                     .title(COURSE_TITLE)
                     .externalUserId(EXTERNAL_AUTHOR_ID)
-                    .sections(new java.util.HashSet<>(Set.of(section)))
+                    .sections(new HashSet<>(Set.of(section)))
                     .build();
 
             section.setCourse(existingCourse);
 
-            // Update command with empty chapters list (removing the chapter)
-            UpdateChapterCommand emptyChapters = UpdateChapterCommand.builder()
-                    .id(UUID.randomUUID().toString()) // Different ID = chapter removed
-                    .title("New Chapter")
-                    .position(1)
-                    .build();
-
+            // Patch: same section id, but chapters list EMPTY => remove chapter cleanly (no side effects)
             UpdateSectionCommand updatedSection = UpdateSectionCommand.builder()
                     .id(section.getId().asString())
-                    .title("Section 1")
-                    .position(1)
-                    .chapters(List.of(emptyChapters)) // Chapter removed
+                    .title(section.getTitle())
+                    .position(section.getPosition())
+                    .chapters(List.of())
                     .build();
 
             var updateCommand = UpdateCourseCommand.builder()
@@ -1046,17 +1040,15 @@ public class CourseUseCasesTest {
             courseUseCases.updateCourse(updateCommand);
 
             // THEN
-            // Verify outbox event was enqueued
             ArgumentCaptor<Id> idCaptor = ArgumentCaptor.forClass(Id.class);
             ArgumentCaptor<String> uriCaptor = ArgumentCaptor.forClass(String.class);
+
             verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(idCaptor.capture(), uriCaptor.capture());
             assertEquals(videoId, idCaptor.getValue().asString());
             assertEquals(sourceUri, uriCaptor.getValue());
 
-            // Verify chapter was soft deleted
             assertNotNull(chapter.getDeletedAt());
 
-            // Verify video was marked for external deletion (checked via the updated VideoInfo in chapter)
             VideoInfo updatedVideo = chapter.getVideo();
             assertNotNull(updatedVideo);
             assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo.externalDeletionStatus());
@@ -1104,7 +1096,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .title("Section 1")
                     .position(1)
-                    .chapters(new java.util.HashSet<>(Set.of(chapter1, chapter2)))
+                    .chapters(new HashSet<>(Set.of(chapter1, chapter2)))
                     .build();
 
             chapter1.setSection(section);
@@ -1119,12 +1111,11 @@ public class CourseUseCasesTest {
 
             section.setCourse(existingCourse);
 
-            // Update command with empty sections list (removing the section)
             var updateCommand = UpdateCourseCommand.builder()
                     .courseId(COURSE_ID_STRING)
                     .externalAuthorId(EXTERNAL_AUTHOR_ID)
                     .rawRoles(RAW_ROLES_TUTOR)
-                    .sections(List.of()) // Section removed
+                    .sections(List.of())
                     .build();
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
@@ -1134,24 +1125,22 @@ public class CourseUseCasesTest {
             courseUseCases.updateCourse(updateCommand);
 
             // THEN
-            // Verify section was soft deleted
             assertNotNull(section.getDeletedAt());
-
-            // Verify both chapters were soft deleted
             assertNotNull(chapter1.getDeletedAt());
             assertNotNull(chapter2.getDeletedAt());
 
-            // Verify both videos were marked with REQUESTED status and deletedAt
             VideoInfo updatedVideo1 = chapter1.getVideo();
             VideoInfo updatedVideo2 = chapter2.getVideo();
+
             assertNotNull(updatedVideo1);
             assertNotNull(updatedVideo2);
+
             assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo1.externalDeletionStatus());
             assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo2.externalDeletionStatus());
+
             assertNotNull(updatedVideo1.deletedAt());
             assertNotNull(updatedVideo2.deletedAt());
 
-            // Verify outbox events were enqueued for both videos
             verify(enqueueOutboxEventPort, times(2)).enqueueVideoDeletionRequested(any(Id.class), anyString());
         }
     }

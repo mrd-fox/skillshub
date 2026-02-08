@@ -5,8 +5,11 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.response.vimeo.V
 import com.simplon_project.skillhub.skillhub.course.application.dto.ProviderPollingSnapshot;
 import com.simplon_project.skillhub.skillhub.course.application.dto.ProviderPollingStateEnum;
 import com.simplon_project.skillhub.skillhub.course.application.dto.VideoUploadInitResult;
+import com.simplon_project.skillhub.skillhub.course.application.exception.VideoProviderDeletionException;
+import com.simplon_project.skillhub.skillhub.course.application.exception.VideoProviderDeletionPermanentException;
 import com.simplon_project.skillhub.skillhub.course.application.exception.VideoProviderPollingException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.InitProviderUploadCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderDeletionPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderPollingPort;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +30,7 @@ import static org.springframework.util.StringUtils.hasText;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoProviderPollingPort {
+public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoProviderPollingPort, VideoProviderDeletionPort {
 
     public static final String PREFIX_VIMEO = "vimeo://";
     public static final String PATH_POLL_VIDEO_BY_ID = "/videos/{id}";
@@ -363,5 +366,105 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
 
         // Otherwise still processing
         return ProviderPollingStateEnum.PROCESSING;
+    }
+
+    @Override
+    public void delete(String sourceUri) {
+        if (sourceUri == null || sourceUri.isBlank()) {
+            throw new IllegalArgumentException("sourceUri must not be blank");
+        }
+
+        String vimeoId = extractVimeoIdFromSourceUri(sourceUri);
+
+        log.info(
+                "Vimeo delete start: sourceUri={} vimeoId={} endpoint={}/videos/{}",
+                sourceUri, vimeoId, vimeoApiBase, vimeoId
+        );
+
+        try {
+            // NOTE:
+            // - Vimeo returns 204 on success.
+            // - retrieve() will throw WebClientResponseException on 4xx/5xx by default.
+            // - We keep .toBodilessEntity() to avoid buffering any body.
+            var response = webClient
+                    .delete()
+                    .uri(vimeoApiBase + PATH_POLL_VIDEO_BY_ID, vimeoId)
+                    .header(HttpHeaders.ACCEPT, vimeoAccept)
+                    .header(HttpHeaders.AUTHORIZATION, BEARER + accessToken)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+
+            // Defensive: if block() returned null, treat as transient
+            if (response == null) {
+                String msg = "Vimeo delete transient error (retry): null response entity vimeoId=" + vimeoId;
+                log.warn(msg);
+                throw new VideoProviderDeletionException(msg);
+            }
+
+            // Defensive: if status isn't 2xx, classify it
+            int status = response.getStatusCode().value();
+            if (status == 204 || (status >= 200 && status < 300)) {
+                log.info("Vimeo delete SUCCESS: sourceUri={} vimeoId={} (HTTP {})", sourceUri, vimeoId, status);
+                return;
+            }
+
+            if (status == 404) {
+                log.info("Vimeo delete SUCCESS (idempotent): sourceUri={} vimeoId={} (HTTP 404)", sourceUri, vimeoId);
+                return;
+            }
+
+            if (status >= 500) {
+                String msg = "Vimeo delete transient error (retry): status=" + status + " vimeoId=" + vimeoId;
+                log.warn(msg);
+                throw new VideoProviderDeletionException(msg);
+            }
+
+            String msg = "Vimeo delete permanent client error (no retry): status=" + status + " vimeoId=" + vimeoId;
+            log.error(msg);
+            throw new VideoProviderDeletionPermanentException(msg);
+
+        } catch (WebClientResponseException ex) {
+
+            int status = ex.getStatusCode().value();
+            String body = safeBody(ex);
+
+            if (status == 404) {
+                log.info(
+                        "Vimeo delete SUCCESS (idempotent): sourceUri={} vimeoId={} (HTTP 404)",
+                        sourceUri, vimeoId
+                );
+                return;
+            }
+
+            // 5xx => transient => retry
+            if (status >= 500) {
+                String msg = "Vimeo delete transient error (retry): status=" + status + " vimeoId=" + vimeoId + " body=" + body;
+                log.warn(msg);
+                throw new VideoProviderDeletionException(msg, ex);
+            }
+
+            // 401/403 are permanent (token/config issue)
+            if (status == 401 || status == 403) {
+                String msg = "Vimeo delete permanent auth error (no retry): status=" + status + " vimeoId=" + vimeoId + " body=" + body;
+                log.error(msg);
+                throw new VideoProviderDeletionPermanentException(msg, ex);
+            }
+
+            // 4xx (except 404) => permanent (NO retry)
+            String msg = "Vimeo delete permanent client error (no retry): status=" + status + " vimeoId=" + vimeoId + " body=" + body;
+            log.error(msg);
+            throw new VideoProviderDeletionPermanentException(msg, ex);
+
+        } catch (VideoProviderDeletionException | VideoProviderDeletionPermanentException ex) {
+            // passthrough: already classified
+            throw ex;
+
+        } catch (Exception ex) {
+            // network/timeout etc => transient => retry
+            String msg = "Vimeo delete network error (retry): vimeoId=" + vimeoId + " error=" + ex.getMessage();
+            log.warn(msg, ex);
+            throw new VideoProviderDeletionException(msg, ex);
+        }
     }
 }
