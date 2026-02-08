@@ -14,9 +14,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class RabbitCourseVideoDeletionProps {
 
     /**
-     * Feature flag to enable/disable deletion listeners and queue declarations.
+     * Operational feature flag.
+     * When false: dispatcher + listener + queue declarations are disabled so the app can start cleanly.
      */
-    private boolean enabled = true; // Enabled by default (production feature)
+    private boolean enabled = true;
 
     /**
      * Main queue that processes video deletion requests.
@@ -43,8 +44,25 @@ public class RabbitCourseVideoDeletionProps {
     private String deletionDelayRoutingKey;
 
     /**
-     * Maximum number of retry attempts before marking as FAILED.
+     * Unified max retries for the whole deletion pipeline:
+     * - Outbox publish attempts (DB -> Rabbit)
+     * - Provider deletion attempts (Rabbit -> Vimeo)
+     * <p>
      * Default: 5
      */
     private int maxRetryAttempts = 5;
+
+    /**
+     * Outbox dispatcher fixed delay in milliseconds.
+     * How often the dispatcher polls for PENDING outbox events.
+     * Default: 5000ms (5 seconds)
+     */
+    private long dispatcherFixedDelayMs = 5000L;
+
+    /**
+     * Outbox dispatcher batch size.
+     * Maximum number of PENDING events processed per scheduler iteration.
+     * Default: 10
+     */
+    private int dispatcherBatchSize = 10;
 }

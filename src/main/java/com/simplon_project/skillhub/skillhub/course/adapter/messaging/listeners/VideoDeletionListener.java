@@ -7,12 +7,14 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.VideoP
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoEntityByIdPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoEntityPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderDeletionPort;
+import com.simplon_project.skillhub.skillhub.course.config.RabbitCourseVideoDeletionProps;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -21,32 +23,30 @@ import java.util.Optional;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "course.rabbitmq.video-deletion", name = "enabled", havingValue = "true")
 public class VideoDeletionListener {
 
     private final LoadVideoEntityByIdPort loadVideoEntityByIdPort;
     private final SaveVideoEntityPort saveVideoEntityPort;
     private final VideoProviderDeletionPort videoProviderDeletionPort;
     private final RabbitTemplate rabbitTemplate;
+    private final RabbitCourseVideoDeletionProps deletionProps;
 
     @Value("${course.rabbitmq.exchange}")
     private String exchange;
-
-    @Value("${course.rabbitmq.video-deletion.deletion-delay-routing-key}")
-    private String delayRoutingKey;
-
-    @Value("${course.rabbitmq.video-deletion.max-retry-attempts:5}")
-    private int maxRetryAttempts;
 
     public VideoDeletionListener(
             LoadVideoEntityByIdPort loadVideoEntityByIdPort,
             SaveVideoEntityPort saveVideoEntityPort,
             VideoProviderDeletionPort videoProviderDeletionPort,
-            @Qualifier("courseRabbitTemplate") RabbitTemplate rabbitTemplate
+            @Qualifier("courseRabbitTemplate") RabbitTemplate rabbitTemplate,
+            RabbitCourseVideoDeletionProps deletionProps
     ) {
         this.loadVideoEntityByIdPort = loadVideoEntityByIdPort;
         this.saveVideoEntityPort = saveVideoEntityPort;
         this.videoProviderDeletionPort = videoProviderDeletionPort;
         this.rabbitTemplate = rabbitTemplate;
+        this.deletionProps = deletionProps;
     }
 
     @RabbitListener(
@@ -91,6 +91,8 @@ public class VideoDeletionListener {
             return;
         }
 
+        int maxRetryAttempts = deletionProps.getMaxRetryAttempts();
+
         // attempt is 1-based. If attempt > max => fail without calling provider
         if (message.attempt() > maxRetryAttempts) {
             saveVideoEntityPort.markFailed(
@@ -122,7 +124,6 @@ public class VideoDeletionListener {
 
         } catch (VideoProviderDeletionPermanentException ex) {
 
-            // No retry for permanent errors
             saveVideoEntityPort.markFailed(message.videoId(), message.attempt(), safe(ex.getMessage()));
 
             log.error(
@@ -134,18 +135,17 @@ public class VideoDeletionListener {
 
         } catch (VideoProviderDeletionException ex) {
 
-            // Retry for transient errors
             scheduleRetry(message, ex.getMessage());
 
         } catch (Exception ex) {
 
-            // Unknown: safer to retry (still capped by maxRetryAttempts)
             scheduleRetry(message, ex.getMessage());
         }
     }
 
     private void scheduleRetry(VideoDeletionMessage message, String errorMessage) {
 
+        int maxRetryAttempts = deletionProps.getMaxRetryAttempts();
         int nextAttempt = message.attempt() + 1;
 
         if (nextAttempt > maxRetryAttempts) {
@@ -167,7 +167,6 @@ public class VideoDeletionListener {
             return;
         }
 
-        // IMPORTANT FIX:
         // Persist the NEXT attempt count (not the current one)
         saveVideoEntityPort.markRetryScheduled(
                 message.videoId(),
@@ -191,9 +190,10 @@ public class VideoDeletionListener {
     }
 
     private void enqueueWithDelay(VideoDeletionMessage message, long delayMs) {
+
         rabbitTemplate.convertAndSend(
                 exchange,
-                delayRoutingKey,
+                deletionProps.getDeletionDelayRoutingKey(),
                 message,
                 msg -> {
                     msg.getMessageProperties().setExpiration(String.valueOf(delayMs));
@@ -216,8 +216,7 @@ public class VideoDeletionListener {
     private String safe(String value) {
         if (value == null || value.isBlank()) {
             return "<no-message>";
-        } else {
-            return value;
         }
+        return value;
     }
 }

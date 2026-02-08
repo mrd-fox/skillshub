@@ -108,6 +108,8 @@ course:
       deletion-delay-queue: course.video.deletion.delay.queue
       deletion-delay-routing-key: course.video.deletion.delay
       max-retry-attempts: 5  # Max retry before marking as FAILED
+      dispatcher-fixed-delay-ms: 5000  # Outbox dispatcher polling interval (5 seconds)
+      dispatcher-batch-size: 10  # Max events processed per dispatcher iteration
 
 ############################################################
 # 📦 MinIO

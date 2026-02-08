@@ -7,6 +7,7 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.VideoP
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoEntityByIdPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoEntityPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderDeletionPort;
+import com.simplon_project.skillhub.skillhub.course.config.RabbitCourseVideoDeletionProps;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,8 @@ class VideoDeletionListenerTest {
     private VideoProviderDeletionPort providerPort;
     private RabbitTemplate rabbitTemplate;
 
+    private RabbitCourseVideoDeletionProps deletionProps;
+
     private VideoDeletionListener listener;
 
     @BeforeEach
@@ -43,11 +46,15 @@ class VideoDeletionListenerTest {
         providerPort = mock(VideoProviderDeletionPort.class);
         rabbitTemplate = mock(RabbitTemplate.class);
 
-        listener = new VideoDeletionListener(loadPort, savePort, providerPort, rabbitTemplate);
+        deletionProps = new RabbitCourseVideoDeletionProps();
+        deletionProps.setEnabled(true);
+        deletionProps.setDeletionDelayRoutingKey("course.video.deletion.delay");
+        deletionProps.setMaxRetryAttempts(5);
 
+        listener = new VideoDeletionListener(loadPort, savePort, providerPort, rabbitTemplate, deletionProps);
+
+        // exchange is still read via @Value in the listener => set it for tests
         ReflectionTestUtils.setField(listener, "exchange", "course.events");
-        ReflectionTestUtils.setField(listener, "delayRoutingKey", "course.video.deletion.delay");
-        ReflectionTestUtils.setField(listener, "maxRetryAttempts", 5);
     }
 
     @Test
@@ -109,7 +116,7 @@ class VideoDeletionListenerTest {
     @Test
     @DisplayName("attempt > maxRetryAttempts => markFailed and do not call provider")
     void onMessage_attemptExceedsMax_shouldFailAndStop() {
-        ReflectionTestUtils.setField(listener, "maxRetryAttempts", 3);
+        deletionProps.setMaxRetryAttempts(3);
 
         VideoDeletionMessage msg = new VideoDeletionMessage("vid-1", "vimeo://123", 4, Instant.now());
         VideoDeletionTarget target = new VideoDeletionTarget(
@@ -137,7 +144,6 @@ class VideoDeletionListenerTest {
                 0
         );
         when(loadPort.loadIncludingSoftDeleted("vid-1")).thenReturn(Optional.of(target));
-        doNothing().when(providerPort).delete("vimeo://123");
 
         listener.onMessage(msg);
 
@@ -171,7 +177,7 @@ class VideoDeletionListenerTest {
     @Test
     @DisplayName("provider transient failure => markRetryScheduled + enqueue delay message with ttl")
     void onMessage_providerTransientFailure_shouldScheduleRetry() {
-        ReflectionTestUtils.setField(listener, "maxRetryAttempts", 5);
+        deletionProps.setMaxRetryAttempts(5);
 
         VideoDeletionMessage msg = new VideoDeletionMessage("vid-1", "vimeo://123", 1, Instant.now());
         VideoDeletionTarget target = new VideoDeletionTarget(
@@ -204,7 +210,7 @@ class VideoDeletionListenerTest {
         assertThat(sent.sourceUri()).isEqualTo("vimeo://123");
         assertThat(sent.attempt()).isEqualTo(2);
 
-        // attempt=2 => delay 10s (per listener computeDelayMs)
+        // attempt=2 => delay 10s
         MessageProperties props = new MessageProperties();
         Message springMsg = new Message(new byte[0], props);
         Message processed = mppCaptor.getValue().postProcessMessage(springMsg);
@@ -215,7 +221,7 @@ class VideoDeletionListenerTest {
     @Test
     @DisplayName("transient failure but nextAttempt exceeds max => markFailed and do not enqueue")
     void onMessage_transientFailureButNextExceedsMax_shouldFailNoEnqueue() {
-        ReflectionTestUtils.setField(listener, "maxRetryAttempts", 2);
+        deletionProps.setMaxRetryAttempts(2);
 
         VideoDeletionMessage msg = new VideoDeletionMessage("vid-1", "vimeo://123", 2, Instant.now());
         VideoDeletionTarget target = new VideoDeletionTarget(
