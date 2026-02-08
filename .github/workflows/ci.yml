@@ -202,6 +202,10 @@ jobs:
           test -f target/site/jacoco/jacoco.xml
       - name: Compile (no tests) to produce bytecode
         run: mvn -B -DskipTests compile
+      - name: Debug Sonar settings
+        run: |
+          mvn -q -DforceStdout help:evaluate -Dexpression=sonar.sources || true
+          mvn -q -DforceStdout help:evaluate -Dexpression=sonar.tests || true
       - name: SonarCloud Scan
         run: >
           mvn -B -Psonar -DskipTests sonar:sonar
@@ -209,4 +213,7 @@ jobs:
           -Dsonar.organization=${{ secrets.SONAR_ORG }}
           -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
           -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.sources=src/main/java
+          -Dsonar.tests=src/test/java
+          -Dsonar.coverage.exclusions=src/test/java/**,**/*Test.java,**/*Tests.java,**/*IT.java
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
