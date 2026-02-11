@@ -8,11 +8,10 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateSectionCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.AccessLevelEnum;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
-import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.*;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseStructureLockedException;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import com.simplon_project.skillhub.skillhub.course.domain.policy.CourseAccessPolicy;
@@ -68,6 +67,7 @@ public class CourseUseCases implements
     private final LoadCourseWithVideoPort loadCourseWithVideoPort;
 
     private final EnqueueOutboxEventPort enqueueOutboxEventPort;
+    private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
 
     @Transactional("courseTxManager")
     @Override
@@ -116,6 +116,9 @@ public class CourseUseCases implements
 
         // Patch sections ONLY when client provided them (null = no-op)
         if (command.sections() != null) {
+            // GUARD: Block structural changes when videos are in-flight
+            enforceStructureLock(courseId);
+
             applySectionsPatch(existing, command.sections());
         }
 
@@ -206,6 +209,37 @@ public class CourseUseCases implements
         course.markAsWaitingValidation();
 
         return updateCourseStructurePort.updateCourseStructure(course);
+    }
+
+    // ========================================================================
+    // STRUCTURE LOCK ENFORCEMENT
+    // ========================================================================
+
+    /**
+     * Enforce structure lock: block structural updates when videos are in-flight.
+     * <p>
+     * In-flight statuses: PENDING (upload initialized), PROCESSING (actively processing).
+     * <p>
+     * Note: UPLOADED is NOT considered in-flight in this codebase, as it represents a stable state
+     * before processing begins. If your workflow differs, add UPLOADED to the check set.
+     *
+     * @param courseId the course ID
+     * @throws CourseStructureLockedException if any in-flight video exists
+     */
+    private void enforceStructureLock(Id courseId) {
+        Set<VideoStatusEnum> inFlightStatuses = Set.of(
+                VideoStatusEnum.PENDING,
+                VideoStatusEnum.PROCESSING
+        );
+
+        boolean hasInFlightVideo = existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(
+                courseId,
+                inFlightStatuses
+        );
+
+        if (hasInFlightVideo) {
+            throw new CourseStructureLockedException(courseId, inFlightStatuses);
+        }
     }
 
     // ========================================================================

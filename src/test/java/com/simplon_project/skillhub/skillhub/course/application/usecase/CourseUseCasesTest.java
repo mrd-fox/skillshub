@@ -5,14 +5,12 @@ import com.simplon_project.skillhub.skillhub.course.application.exception.Course
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadySubmittedException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseNotPublishableException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.*;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -59,6 +57,9 @@ public class CourseUseCasesTest {
 
     @Mock
     private EnqueueOutboxEventPort enqueueOutboxEventPort;
+
+    @Mock
+    private ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
 
     @InjectMocks
     private CourseUseCases courseUseCases;
@@ -360,6 +361,143 @@ public class CourseUseCasesTest {
             // WHEN + THEN
             assertThrows(CourseAlreadyExistsException.class,
                     () -> courseUseCases.updateCourse(updateCommand));
+        }
+
+        // ========================================================================
+        // STRUCTURE LOCK ENFORCEMENT TESTS
+        // ========================================================================
+
+        @Test
+        @DisplayName("updateCourse_metaOnly_shouldSucceed_whenVideoPending")
+        void updateCourse_metaOnly_shouldSucceed_whenVideoPending() {
+            // GIVEN - Meta-only update (sections = null)
+            String newTitle = "Updated Title";
+            var existingCourse = buildCourse();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .title(newTitle)
+                    .sections(null)  // null = no structure change
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            var updatedCourse = courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(updatedCourse);
+            assertEquals(newTitle, updatedCourse.getTitle());
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
+            // existsInFlightVideoForCoursePort should NOT be called when sections = null
+            verify(existsInFlightVideoForCoursePort, never()).existsInFlightVideoForCourse(any(Id.class), anySet());
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldFail_whenVideoPending")
+        void updateCourse_structurePatch_shouldFail_whenVideoPending() {
+            // GIVEN - Structure update (sections provided)
+            var existingCourse = buildCourse();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of())  // empty list = structural change attempt
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // Simulate in-flight video with PENDING status
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(true);
+
+            // WHEN + THEN
+            var exception = assertThrows(CourseStructureLockedException.class,
+                    () -> courseUseCases.updateCourse(updateCommand));
+
+            assertNotNull(exception);
+            assertTrue(exception.getMessage().contains("in-flight status detected"));
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldFail_whenVideoProcessing")
+        void updateCourse_structurePatch_shouldFail_whenVideoProcessing() {
+            // GIVEN - Structure update with PROCESSING video
+            var existingCourse = buildCourse();
+
+            var sectionCmd = UpdateSectionCommand.builder()
+                    .id(UUID.randomUUID().toString())
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(List.of())
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(sectionCmd))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // Simulate in-flight video with PROCESSING status
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(true);
+
+            // WHEN + THEN
+            var exception = assertThrows(CourseStructureLockedException.class,
+                    () -> courseUseCases.updateCourse(updateCommand));
+
+            assertNotNull(exception);
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldSucceed_whenNoInFlightVideos")
+        void updateCourse_structurePatch_shouldSucceed_whenNoInFlightVideos() {
+            // GIVEN - Structure update with no in-flight videos
+            var existingCourse = buildCourse();
+
+            var sectionCmd = UpdateSectionCommand.builder()
+                    .id(UUID.randomUUID().toString())
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(List.of())
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(sectionCmd))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // No in-flight videos exist
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(false);
+
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            var updatedCourse = courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(updatedCourse);
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
         }
     }
 
