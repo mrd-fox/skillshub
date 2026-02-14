@@ -95,14 +95,22 @@ course:
     # Video polling (CONFIRM -> PROCESSING -> READY/FAILED)
     video-polling:
       enabled: true
-
       polling-queue: ${RABBITMQ_VIDEO_POLLING_QUEUE:course.video.polling.queue}
       polling-routing-key: ${RABBITMQ_VIDEO_POLLING_ROUTING_KEY:course.video.polling.requested}
-
       polling-delay-queue: ${RABBITMQ_VIDEO_POLLING_DELAY_QUEUE:course.video.polling.delay.queue}
       polling-delay-routing-key: ${RABBITMQ_VIDEO_POLLING_DELAY_ROUTING_KEY:course.video.polling.delay}
-
       timeout-minutes: ${RABBITMQ_VIDEO_POLLING_TIMEOUT_MINUTES:15}
+
+    video-deletion:
+      enabled: true  # Enable deletion worker
+      deletion-queue: course.video.deletion.queue
+      deletion-routing-key: course.video.deletion.requested
+      deletion-delay-queue: course.video.deletion.delay.queue
+      deletion-delay-routing-key: course.video.deletion.delay
+      max-retry-attempts: 5  # Max retry before marking as FAILED
+      dispatcher-fixed-delay-ms: 5000  # Outbox dispatcher polling interval (5 seconds)
+      dispatcher-batch-size: 10  # Max events processed per dispatcher iteration
+
 ############################################################
 # 📦 MinIO
 ############################################################

@@ -19,5 +19,13 @@ databaseChangeLog:
       file: db/changelog/course/1.1.x/1.0.1_videos_add_columns.yaml
   - include:
       file: db/changelog/course/1.1.x/1.0.1_add_embed_hash_to_videos.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_soft_delete.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_create_outbox_table.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_video_external_deletion_tracking.yaml
+  - include:
+      file: db/changelog/course/1.1.x/1.0.1_add_column_outbox_table.yaml
 
       

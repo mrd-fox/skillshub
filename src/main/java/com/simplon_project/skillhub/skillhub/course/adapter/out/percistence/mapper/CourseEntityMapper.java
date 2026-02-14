@@ -19,7 +19,7 @@ public class CourseEntityMapper {
         if (existing != null) return existing;
 
         var domain = Course.builder()
-                .id(Id.of(entity.getId().toString()))
+                .id(Id.of(entity.getId().value().toString()))
                 .status(entity.getStatus())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
@@ -29,7 +29,13 @@ public class CourseEntityMapper {
                 .build();
         context.storeMappedInstance(entity, domain);
 
-        domain.setSections(SectionEntityMapper.mapToDomains(entity.getSections(), context));
+        // SAFETY (Secondary Defense): Filter out soft-deleted sections
+        // Primary defense is repository queries, but this ensures no deleted entities reach domain
+        var nonDeletedSections = entity.getSections().stream()
+                .filter(s -> s.getDeletedAt() == null)
+                .collect(java.util.stream.Collectors.toSet());
+
+        domain.setSections(SectionEntityMapper.mapToDomains(nonDeletedSections, context));
         return domain;
     }
 
@@ -89,7 +95,7 @@ public class CourseEntityMapper {
         if (existing != null) return existing;
 
         var domain = Course.builder()
-                .id(Id.of(entity.getId().toString()))
+                .id(Id.of(entity.getId().value().toString()))
                 .status(entity.getStatus())
                 .title(entity.getTitle())
                 .externalUserId(entity.getExternalUserId())

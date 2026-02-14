@@ -28,7 +28,13 @@ public class SectionEntityMapper {
 
         context.storeMappedInstance(entity, domain);
 
-        domain.setChapters(ChapterEntityMapper.mapToDomains(entity.getChapters(), context));
+        // SAFETY (Secondary Defense): Filter out soft-deleted chapters
+        // Primary defense is repository queries, but this ensures no deleted entities reach domain
+        var nonDeletedChapters = entity.getChapters().stream()
+                .filter(ch -> ch.getDeletedAt() == null)
+                .collect(java.util.stream.Collectors.toSet());
+
+        domain.setChapters(ChapterEntityMapper.mapToDomains(nonDeletedChapters, context));
         return domain;
     }
 

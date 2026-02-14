@@ -14,10 +14,8 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Section;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -27,7 +25,8 @@ public class CourseRepositoryAdapter implements
         LoadCourseByIdPort,
         UpdateCourseStructurePort,
         LoadCourseStructurePort,
-        LoadCourseWithVideoPort {
+        LoadCourseWithVideoPort,
+        SoftDeleteCoursePort {
 
     private final JpaCourseRepository courseJpaRepository;
 
@@ -46,22 +45,22 @@ public class CourseRepositoryAdapter implements
     public Course updateCourseStructure(Course courseDomain) {
         var courseId = EntityId.fromString(courseDomain.getId().asString());
 
-        // 1) Charger le graphe MANAGÉ
+        // 1) Load managed aggregate graph
         CourseEntity managedCourseEntity = courseJpaRepository
-                .findByIdWithTree(courseId)
+                .findByIdWithTreeIncludingDeleted(courseId)
                 .orElseThrow(() -> new IllegalStateException("Course not found: " + courseId));
 
-        // 2) Appliquer un patch ciblé (modifie les collections en place)
+        // 2) Apply domain patch to managed entity graph (in-place mutations)
         applyDomainToManagedEntity(courseDomain, managedCourseEntity);
 
-        // 3) Persister et flusher pour peupler les timestamps
+        // 3) Persist + flush to populate timestamps
         var savedCourseEntity = courseJpaRepository.saveAndFlush(managedCourseEntity);
 
-        // 4) Mapper depuis l'entity persistée
+        // 4) Map from persisted entity
         return CourseEntityMapper.mapToDomain(savedCourseEntity, new CycleAvoidingMappingContext());
     }
 
-    // ==================== CoursePort (legacy - pour compatibilité) ====================
+    // ==================== CoursePort (legacy - compatibility) ====================
 
     @Override
     public Optional<Course> findById(String id) {
@@ -85,43 +84,52 @@ public class CourseRepositoryAdapter implements
         managedCourseEntity.setDescription(courseDomain.getDescription());
         managedCourseEntity.setStatus(courseDomain.getStatus());
 
+        // Soft delete sync for course itself (CRITICAL for deleteCourse)
+        managedCourseEntity.setDeletedAt(courseDomain.getDeletedAt());
 
-        Map<UUID, Section> sectionDomainsById = courseDomain.getSections().stream()
+        Set<Section> domainSections = (courseDomain.getSections() == null) ? Collections.emptySet() : courseDomain.getSections();
+
+        Map<UUID, Section> sectionDomainsById = domainSections.stream()
+                .filter(sectionDomain -> sectionDomain.getId() != null)
                 .collect(Collectors.toMap(
                         sectionDomain -> UUID.fromString(sectionDomain.getId().asString()),
                         sectionDomain -> sectionDomain
                 ));
 
         for (Map.Entry<UUID, Section> entry : sectionDomainsById.entrySet()) {
-            var sectionId = entry.getKey();
-            var sectionDomain = entry.getValue();
+            UUID sectionId = entry.getKey();
+            Section sectionDomain = entry.getValue();
 
-            var existingSectionEntity = managedCourseEntity.getSections().stream()
+            SectionEntity existingSectionEntity = managedCourseEntity.getSections().stream()
                     .filter(sectionEntity -> sectionEntity.getId().value().equals(sectionId))
                     .findFirst()
                     .orElse(null);
 
             if (existingSectionEntity == null) {
 
-                var newSectionEntity = SectionEntity.builder()
+                SectionEntity newSectionEntity = SectionEntity.builder()
                         .sectionId(EntityId.of(sectionId))
                         .title(sectionDomain.getTitle())
                         .course(managedCourseEntity)
                         .position(sectionDomain.getPosition())
+                        .deletedAt(sectionDomain.getDeletedAt())
                         .build();
 
-                var chapterEntities = sectionDomain.getChapters().stream()
+                Set<Chapter> domainChapters = (sectionDomain.getChapters() == null) ? Collections.emptySet() : sectionDomain.getChapters();
+
+                var chapterEntities = domainChapters.stream()
+                        .filter(chapterDomain -> chapterDomain.getId() != null)
                         .map(chapterDomain -> {
-                            var candidateChapter = ChapterEntity.builder()
+                            ChapterEntity candidateChapter = ChapterEntity.builder()
                                     .chapterId(EntityId.of(UUID.fromString(chapterDomain.getId().asString())))
                                     .title(chapterDomain.getTitle())
                                     .position(chapterDomain.getPosition())
+                                    .deletedAt(chapterDomain.getDeletedAt())
+                                    .section(newSectionEntity)
                                     .build();
 
-                            var candidateVideo = Optional.ofNullable(chapterDomain.getVideo());
-
-                            candidateVideo.ifPresent(videoDomain -> {
-                                var videoEntity = VideoEntity.builder()
+                            Optional.ofNullable(chapterDomain.getVideo()).ifPresent(videoDomain -> {
+                                VideoEntity videoEntity = VideoEntity.builder()
                                         .videoId(EntityId.of(UUID.fromString(videoDomain.id().asString())))
                                         .storageKey(videoDomain.key())
                                         .format(videoDomain.format())
@@ -130,37 +138,47 @@ public class CourseRepositoryAdapter implements
                                         .duration(videoDomain.duration())
                                         .status(videoDomain.status())
                                         .height(videoDomain.height())
+                                        .externalDeletionStatus(videoDomain.externalDeletionStatus())
+                                        .deletedAt(videoDomain.deletedAt())
                                         .chapter(candidateChapter)
                                         .build();
 
                                 candidateChapter.setVideo(videoEntity);
                             });
 
-                            candidateChapter.setSection(newSectionEntity);
                             return candidateChapter;
-                        }).toList();
+                        })
+                        .toList();
 
+                // Attach chapters once
                 newSectionEntity.getChapters().addAll(chapterEntities);
+
+                // Attach section once
                 managedCourseEntity.getSections().add(newSectionEntity);
 
-
-                // Rattacher la section pour le FK et remplir la collection modifiable
-                for (ChapterEntity chapterEntity : chapterEntities) {
-                    chapterEntity.setSection(newSectionEntity);
-                }
-                newSectionEntity.getChapters().addAll(chapterEntities);
-                managedCourseEntity.getSections().add(newSectionEntity);
             } else {
+                // Update existing section
                 if (!Objects.equals(existingSectionEntity.getTitle(), sectionDomain.getTitle())) {
                     existingSectionEntity.setTitle(sectionDomain.getTitle());
                 }
+                if (!Objects.equals(existingSectionEntity.getPosition(), sectionDomain.getPosition())) {
+                    existingSectionEntity.setPosition(sectionDomain.getPosition());
+                }
+
+                // Sync soft delete timestamp
+                existingSectionEntity.setDeletedAt(sectionDomain.getDeletedAt());
+
                 syncChaptersInPlace(existingSectionEntity, sectionDomain);
             }
         }
     }
 
     private void syncChaptersInPlace(SectionEntity sectionEntity, Section sectionDomain) {
-        Map<UUID, Chapter> chaptersById = sectionDomain.getChapters().stream()
+
+        Set<Chapter> domainChapters = (sectionDomain.getChapters() == null) ? Collections.emptySet() : sectionDomain.getChapters();
+
+        Map<UUID, Chapter> chaptersById = domainChapters.stream()
+                .filter(chapterDomain -> chapterDomain.getId() != null)
                 .collect(Collectors.toMap(
                         c -> UUID.fromString(c.getId().asString()),
                         c -> c
@@ -176,16 +194,16 @@ public class CourseRepositoryAdapter implements
                     .orElse(null);
 
             if (existingChapter == null) {
-                var candidateChapter = ChapterEntity.builder()
+                ChapterEntity candidateChapter = ChapterEntity.builder()
                         .chapterId(EntityId.of(chapterId))
                         .title(chapterDomain.getTitle())
                         .position(chapterDomain.getPosition())
+                        .deletedAt(chapterDomain.getDeletedAt())
                         .section(sectionEntity)
                         .build();
 
-                var videoCandidate = Optional.ofNullable(chapterDomain.getVideo());
-                videoCandidate.ifPresent(videoDomain -> {
-                    var videoEntity = VideoEntity.builder()
+                Optional.ofNullable(chapterDomain.getVideo()).ifPresent(videoDomain -> {
+                    VideoEntity videoEntity = VideoEntity.builder()
                             .videoId(EntityId.of(UUID.fromString(videoDomain.id().asString())))
                             .storageKey(videoDomain.key())
                             .format(videoDomain.format())
@@ -194,13 +212,17 @@ public class CourseRepositoryAdapter implements
                             .duration(videoDomain.duration())
                             .status(videoDomain.status())
                             .height(videoDomain.height())
+                            .externalDeletionStatus(videoDomain.externalDeletionStatus())
+                            .deletedAt(videoDomain.deletedAt())
                             .chapter(candidateChapter)
                             .build();
                     candidateChapter.setVideo(videoEntity);
                 });
 
                 sectionEntity.getChapters().add(candidateChapter);
+
             } else {
+                // Update existing chapter
                 if (!Objects.equals(existingChapter.getTitle(), chapterDomain.getTitle())) {
                     existingChapter.setTitle(chapterDomain.getTitle());
                 }
@@ -208,9 +230,12 @@ public class CourseRepositoryAdapter implements
                     existingChapter.setPosition(chapterDomain.getPosition());
                 }
 
-                var videoCandidate = Optional.ofNullable(chapterDomain.getVideo());
-                videoCandidate.ifPresent(videoDomain -> {
-                    var existingVideoEntity = existingChapter.getVideo();
+                // Sync soft delete timestamp
+                existingChapter.setDeletedAt(chapterDomain.getDeletedAt());
+
+                Optional.ofNullable(chapterDomain.getVideo()).ifPresent(videoDomain -> {
+                    VideoEntity existingVideoEntity = existingChapter.getVideo();
+
                     if (existingVideoEntity == null) {
                         VideoEntity videoEntity = VideoEntity.builder()
                                 .videoId(EntityId.of(UUID.fromString(videoDomain.id().asString())))
@@ -221,17 +246,27 @@ public class CourseRepositoryAdapter implements
                                 .duration(videoDomain.duration())
                                 .status(videoDomain.status())
                                 .height(videoDomain.height())
+                                .externalDeletionStatus(videoDomain.externalDeletionStatus())
+                                .deletedAt(videoDomain.deletedAt())
                                 .chapter(existingChapter)
                                 .build();
                         existingChapter.setVideo(videoEntity);
+
                     } else {
-                        existingVideoEntity.setStorageKey(videoDomain.key());
-                        existingVideoEntity.setFormat(videoDomain.format());
-                        existingVideoEntity.setSize(videoDomain.size());
-                        existingVideoEntity.setWidth(videoDomain.width());
-                        existingVideoEntity.setHeight(videoDomain.height());
-                        existingVideoEntity.setDuration(videoDomain.duration());
-                        existingVideoEntity.setStatus(videoDomain.status());
+                        // IMPORTANT:
+                        // Do NOT overwrite polling-managed fields (status, duration, thumbnailUrl, dimensions, format, etc.)
+                        // Only sync soft-delete/external deletion tracking fields from domain.
+
+                        existingVideoEntity.setExternalDeletionStatus(videoDomain.externalDeletionStatus());
+                        existingVideoEntity.setDeletedAt(videoDomain.deletedAt());
+
+                        if (videoDomain.externalDeletionStatus() == com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus.REQUESTED) {
+                            if (existingVideoEntity.getDeleteRequestedAt() == null) {
+                                existingVideoEntity.setDeleteRequestedAt(Instant.now());
+                                existingVideoEntity.setDeleteAttemptCount(0);
+                                existingVideoEntity.setDeleteLastError(null);
+                            }
+                        }
                     }
                 });
             }
@@ -256,5 +291,14 @@ public class CourseRepositoryAdapter implements
                 .orElseThrow(() -> new CourseNotFoundException(courseId));
 
         return CourseEntityMapper.mapToDomain(entity, new CycleAvoidingMappingContext());
+    }
+
+    // ==================== SoftDeleteCoursePort ====================
+
+    @Override
+    public void softDelete(Course course, Instant now) {
+        // Domain already contains the soft-delete cascade timestamps.
+        // Reuse the managed-graph patch to persist it.
+        updateCourseStructure(course);
     }
 }

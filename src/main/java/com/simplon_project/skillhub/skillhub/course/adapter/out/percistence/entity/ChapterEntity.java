@@ -3,6 +3,9 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ent
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.Instant;
 
 @SuperBuilder
 @AllArgsConstructor
@@ -12,7 +15,9 @@ import lombok.experimental.SuperBuilder;
 @Entity
 @Builder
 @Table(name = "\"chapters\"")
+@SQLRestriction("deleted_at is null")
 public class ChapterEntity extends AbstractBaseEntity {
+
     @EmbeddedId
     private EntityId chapterId;
 
@@ -26,19 +31,26 @@ public class ChapterEntity extends AbstractBaseEntity {
     @Column(name = "position", nullable = false)
     private Integer position;
 
-    @OneToOne(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Soft delete support (Option B strategy)
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @OneToOne(mappedBy = "chapter", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private VideoEntity video = null;
 
     public void setVideo(VideoEntity videoEntity) {
-        if (this.video != null) this.video.setChapter(null);
+        if (this.video != null) {
+            this.video.setChapter(null);
+        }
         this.video = videoEntity;
-        if (videoEntity != null) videoEntity.setChapter(this);
+        if (videoEntity != null) {
+            videoEntity.setChapter(this);
+        }
     }
 
     @Override
     public EntityId getId() {
         return chapterId;
     }
-
 }

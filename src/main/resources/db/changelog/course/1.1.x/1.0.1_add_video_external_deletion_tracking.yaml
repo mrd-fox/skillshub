@@ -1,0 +1,57 @@
+databaseChangeLog:
+  # Add external deletion tracking columns to videos table for Option B deletion strategy
+  - changeSet:
+      id: SH-166-006-add-external-deletion-tracking-to-videos
+      author: Marina DARDE
+      changes:
+        # Track external (Vimeo) deletion state independently from video upload/processing status
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: external_deletion_status
+                  type: VARCHAR(50)
+                  defaultValue: 'NONE'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: delete_requested_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+              - column:
+                  name: delete_attempt_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: delete_last_error
+                  type: TEXT
+                  constraints:
+                    nullable: true
+
+        # Index on external_deletion_status for efficient filtering of pending deletions
+        - createIndex:
+            indexName: idx_videos_external_deletion_status
+            tableName: videos
+            columns:
+              - column:
+                  name: external_deletion_status
+
+      rollback:
+        - dropIndex:
+            indexName: idx_videos_external_deletion_status
+            tableName: videos
+        - dropColumn:
+            tableName: videos
+            columnName: delete_last_error
+        - dropColumn:
+            tableName: videos
+            columnName: delete_attempt_count
+        - dropColumn:
+            tableName: videos
+            columnName: delete_requested_at
+        - dropColumn:
+            tableName: videos
+            columnName: external_deletion_status

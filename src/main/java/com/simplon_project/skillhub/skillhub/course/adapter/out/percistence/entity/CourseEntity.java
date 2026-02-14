@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -51,7 +52,11 @@ public class CourseEntity extends AbstractBaseEntity {
     @Column(name = "external_user_id")
     private String externalUserId;
 
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Soft delete support (Option B strategy)
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @OneToMany(mappedBy = "course", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @OrderBy("position ASC")
     @Builder.Default
     private Set<SectionEntity> sections = new HashSet<>();

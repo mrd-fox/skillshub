@@ -4,14 +4,18 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repo
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadySubmittedException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseNotPublishableException;
-import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.*;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
+import com.simplon_project.skillhub.skillhub.helpers.builders.ChapterBuilder;
+import com.simplon_project.skillhub.skillhub.helpers.builders.SectionBuilder;
+import com.simplon_project.skillhub.skillhub.helpers.builders.VideoBuilder;
+import com.simplon_project.skillhub.skillhub.helpers.mothers.CourseMother;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,11 +25,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,6 +59,15 @@ public class CourseUseCasesTest {
 
     @Mock
     private LoadCourseWithVideoPort loadCourseWithVideoPort;
+
+    @Mock
+    private EnqueueOutboxEventPort enqueueOutboxEventPort;
+
+    @Mock
+    private ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
+
+    @Mock
+    SoftDeleteCoursePort softDeleteCoursePort;
 
     @InjectMocks
     private CourseUseCases courseUseCases;
@@ -284,11 +295,16 @@ public class CourseUseCasesTest {
                     .title("New Title")
                     .build();
 
-            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(null);
+            Id courseId = Id.of(COURSE_ID_STRING);
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class)))
+                    .thenThrow(new CourseNotFoundException(courseId));
 
             // WHEN + THEN
             assertThrows(CourseNotFoundException.class,
                     () -> courseUseCases.updateCourse(updateCommand));
+
+            verifyNoInteractions(updateCourseStructurePort);
         }
 
         @Test
@@ -299,7 +315,7 @@ public class CourseUseCasesTest {
 
             var updateCommand = UpdateCourseCommand.builder()
                     .courseId(COURSE_ID_STRING)
-                    .externalAuthorId(OTHER_USER_ID)  // Different user
+                    .externalAuthorId(OTHER_USER_ID)
                     .rawRoles(RAW_ROLES_TUTOR)
                     .title("New Title")
                     .build();
@@ -320,7 +336,7 @@ public class CourseUseCasesTest {
 
             var updateCommand = UpdateCourseCommand.builder()
                     .courseId(COURSE_ID_STRING)
-                    .externalAuthorId(OTHER_USER_ID)  // Different user but ADMIN
+                    .externalAuthorId(OTHER_USER_ID)
                     .rawRoles(RAW_ROLES_ADMIN)
                     .title(newTitle)
                     .build();
@@ -358,6 +374,143 @@ public class CourseUseCasesTest {
             // WHEN + THEN
             assertThrows(CourseAlreadyExistsException.class,
                     () -> courseUseCases.updateCourse(updateCommand));
+        }
+
+        // ========================================================================
+        // STRUCTURE LOCK ENFORCEMENT TESTS
+        // ========================================================================
+
+        @Test
+        @DisplayName("updateCourse_metaOnly_shouldSucceed_whenVideoPending")
+        void updateCourse_metaOnly_shouldSucceed_whenVideoPending() {
+            // GIVEN - Meta-only update (sections = null)
+            String newTitle = "Updated Title";
+            var existingCourse = buildCourse();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .title(newTitle)
+                    .sections(null)  // null = no structure change
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            doNothing().when(createNewCoursePort).assertCourseNotExists(any(Course.class));
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            var updatedCourse = courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(updatedCourse);
+            assertEquals(newTitle, updatedCourse.getTitle());
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
+            // existsInFlightVideoForCoursePort should NOT be called when sections = null
+            verify(existsInFlightVideoForCoursePort, never()).existsInFlightVideoForCourse(any(Id.class), anySet());
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldFail_whenVideoPending")
+        void updateCourse_structurePatch_shouldFail_whenVideoPending() {
+            // GIVEN - Structure update (sections provided)
+            var existingCourse = buildCourse();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of())  // empty list = structural change attempt
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // Simulate in-flight video with PENDING status
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(true);
+
+            // WHEN + THEN
+            var exception = assertThrows(CourseStructureLockedException.class,
+                    () -> courseUseCases.updateCourse(updateCommand));
+
+            assertNotNull(exception);
+            assertTrue(exception.getMessage().contains("in-flight status detected"));
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldFail_whenVideoProcessing")
+        void updateCourse_structurePatch_shouldFail_whenVideoProcessing() {
+            // GIVEN - Structure update with PROCESSING video
+            var existingCourse = buildCourse();
+
+            var sectionCmd = UpdateSectionCommand.builder()
+                    .id(UUID.randomUUID().toString())
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(List.of())
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(sectionCmd))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // Simulate in-flight video with PROCESSING status
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(true);
+
+            // WHEN + THEN
+            var exception = assertThrows(CourseStructureLockedException.class,
+                    () -> courseUseCases.updateCourse(updateCommand));
+
+            assertNotNull(exception);
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort, never()).updateCourseStructure(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("updateCourse_structurePatch_shouldSucceed_whenNoInFlightVideos")
+        void updateCourse_structurePatch_shouldSucceed_whenNoInFlightVideos() {
+            // GIVEN - Structure update with no in-flight videos
+            var existingCourse = buildCourse();
+
+            var sectionCmd = UpdateSectionCommand.builder()
+                    .id(UUID.randomUUID().toString())
+                    .title("Section 1")
+                    .position(1)
+                    .chapters(List.of())
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(sectionCmd))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // No in-flight videos exist
+            when(existsInFlightVideoForCoursePort.existsInFlightVideoForCourse(any(Id.class), anySet()))
+                    .thenReturn(false);
+
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            var updatedCourse = courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(updatedCourse);
+            verify(existsInFlightVideoForCoursePort).existsInFlightVideoForCourse(any(Id.class), anySet());
+            verify(updateCourseStructurePort).updateCourseStructure(any(Course.class));
         }
     }
 
@@ -471,7 +624,7 @@ public class CourseUseCasesTest {
         void getCourse_asPublic_onDraftCourse_shouldThrowException() {
             // GIVEN
             var command = new GetCourseCommand(OTHER_USER_ID, Set.of(UserRole.STUDENT), COURSE_ID_STRING);
-            var draftCourse = buildCourse(); // DRAFT status
+            var draftCourse = buildCourse();
 
             when(loadCourseStructurePort.loadStructure(any(Id.class))).thenReturn(draftCourse);
 
@@ -656,7 +809,7 @@ public class CourseUseCasesTest {
                     .build();
 
             Course courseWithVideo = buildPublishableCourse();
-            courseWithVideo.setExternalUserId(EXTERNAL_AUTHOR_ID); // Different owner
+            courseWithVideo.setExternalUserId(EXTERNAL_AUTHOR_ID);
 
             when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(courseWithVideo);
 
@@ -828,6 +981,7 @@ public class CourseUseCasesTest {
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.READY)
                     .duration(3600L)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()
@@ -865,7 +1019,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .title("Chapter 1")
                     .position(1)
-                    .video(null) // No video
+                    .video(null)
                     .build();
 
             Section section = Section.builder()
@@ -896,6 +1050,7 @@ public class CourseUseCasesTest {
                     .id(Id.of(UUID.randomUUID().toString()))
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.PROCESSING)
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()
@@ -934,6 +1089,7 @@ public class CourseUseCasesTest {
                     .sourceUri("vimeo://123456")
                     .status(VideoStatusEnum.FAILED)
                     .errorMessage("Upload failed")
+                    .externalDeletionStatus(ExternalDeletionStatus.NONE)
                     .build();
 
             Chapter chapter = Chapter.builder()
@@ -964,6 +1120,404 @@ public class CourseUseCasesTest {
 
             section.setCourse(course);
             return course;
+        }
+    }
+
+    // ========================================================================
+    // SOFT DELETE TESTS (SH-166 STEP 2)
+    // ========================================================================
+    @Nested
+    @DisplayName("updateCourse - Soft Delete")
+    class UpdateCourseSoftDelete {
+
+        @Test
+        @DisplayName("should soft delete video and enqueue outbox event when chapter is removed")
+        void updateCourse_whenChapterRemoved_shouldSoftDeleteVideoAndEnqueueOutboxEvent() {
+            // GIVEN
+            Course existingCourse = CourseMother.withVideoNone(EXTERNAL_AUTHOR_ID);
+            Section existingSection = existingCourse.getSectionsSorted().get(0);
+            Chapter removedChapter = existingSection.getChaptersSorted().get(0);
+            VideoInfo originalVideo = removedChapter.getVideo();
+
+            String videoId = originalVideo.id().asString();
+            String sourceUri = originalVideo.sourceUri();
+
+            // Patch: same section id, but chapters list EMPTY => remove chapter cleanly
+            UpdateSectionCommand updatedSection = UpdateSectionCommand.builder()
+                    .id(existingSection.getId().asString())
+                    .title(existingSection.getTitle())
+                    .position(existingSection.getPosition())
+                    .chapters(List.of())
+                    .build();
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of(updatedSection))
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            ArgumentCaptor<Id> idCaptor = ArgumentCaptor.forClass(Id.class);
+            ArgumentCaptor<String> uriCaptor = ArgumentCaptor.forClass(String.class);
+
+            verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(idCaptor.capture(), uriCaptor.capture());
+            assertEquals(videoId, idCaptor.getValue().asString());
+            assertEquals(sourceUri, uriCaptor.getValue());
+
+            assertNotNull(removedChapter.getDeletedAt());
+
+            VideoInfo updatedVideo = removedChapter.getVideo();
+            assertNotNull(updatedVideo);
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo.externalDeletionStatus());
+            assertNotNull(updatedVideo.deletedAt());
+        }
+
+        @Test
+        @DisplayName("should soft delete section with all chapters and videos when section is removed")
+        void updateCourse_whenSectionRemoved_shouldSoftDeleteSectionChaptersAndVideos() {
+            // GIVEN - Course with 2 videos in 2 chapters
+            VideoInfo video1 = VideoBuilder.aVideo()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            VideoInfo video2 = VideoBuilder.aVideo()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            Chapter chapter1 = ChapterBuilder.aChapter()
+                    .withVideo(video1)
+                    .build();
+
+            Chapter chapter2 = ChapterBuilder.aChapter()
+                    .withVideo(video2)
+                    .build();
+
+            Section section = SectionBuilder.aSection()
+                    .withChapter(chapter1)
+                    .withChapter(chapter2)
+                    .build();
+
+            Course existingCourse = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(new HashSet<>(Set.of(section)))
+                    .build();
+
+            section.setCourse(existingCourse);
+
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of())
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(section.getDeletedAt());
+            assertNotNull(chapter1.getDeletedAt());
+            assertNotNull(chapter2.getDeletedAt());
+
+            VideoInfo updatedVideo1 = chapter1.getVideo();
+            VideoInfo updatedVideo2 = chapter2.getVideo();
+
+            assertNotNull(updatedVideo1);
+            assertNotNull(updatedVideo2);
+
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo1.externalDeletionStatus());
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo2.externalDeletionStatus());
+
+            assertNotNull(updatedVideo1.deletedAt());
+            assertNotNull(updatedVideo2.deletedAt());
+
+            verify(enqueueOutboxEventPort, times(2)).enqueueVideoDeletionRequested(any(Id.class), anyString());
+        }
+
+        @Test
+        @DisplayName("should be idempotent when video already REQUESTED - no enqueue")
+        void updateCourse_whenVideoAlreadyRequested_shouldNotEnqueueAgain() {
+            // GIVEN
+            Course existingCourse = CourseMother.withVideoAlreadyRequested(EXTERNAL_AUTHOR_ID);
+            Section existingSection = existingCourse.getSectionsSorted().get(0);
+
+            // Patch: remove section (which has video already REQUESTED)
+            var updateCommand = UpdateCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalAuthorId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .sections(List.of())
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+            when(updateCourseStructurePort.updateCourseStructure(any(Course.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // WHEN
+            courseUseCases.updateCourse(updateCommand);
+
+            // THEN
+            assertNotNull(existingSection.getDeletedAt());
+
+            Chapter chapter = existingSection.getChaptersSorted().get(0);
+            assertNotNull(chapter.getDeletedAt());
+
+            VideoInfo video = chapter.getVideo();
+            assertNotNull(video);
+            assertEquals(ExternalDeletionStatus.REQUESTED, video.externalDeletionStatus());
+            assertNotNull(video.deletedAt());
+
+            // NO new outbox event should be enqueued (idempotent)
+            verify(enqueueOutboxEventPort, never()).enqueueVideoDeletionRequested(any(Id.class), anyString());
+        }
+    }
+
+    // ========================================================================
+    // DELETE COURSE TESTS
+    // ========================================================================
+    @Nested
+    @DisplayName("delete")
+    class DeleteCourse {
+
+        @Test
+        @DisplayName("ADMIN should successfully delete course and enqueue videos with status NONE only")
+        void delete_asAdmin_shouldSucceedAndEnqueueVideosWithNoneStatus() {
+            // GIVEN
+            Course existingCourse = CourseMother.withVideoNone(EXTERNAL_AUTHOR_ID);
+            Section section = existingCourse.getSectionsSorted().get(0);
+            Chapter chapter = section.getChaptersSorted().get(0);
+            VideoInfo video = chapter.getVideo();
+
+            String videoId = video.id().asString();
+            String sourceUri = video.sourceUri();
+
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId("admin-user-123")
+                    .rawRoles(RAW_ROLES_ADMIN)
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // WHEN
+            courseUseCases.delete(command);
+
+            // THEN
+            ArgumentCaptor<Course> courseCaptor = ArgumentCaptor.forClass(Course.class);
+            ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
+
+            verify(softDeleteCoursePort).softDelete(courseCaptor.capture(), instantCaptor.capture());
+
+            Course capturedCourse = courseCaptor.getValue();
+            assertNotNull(capturedCourse.getDeletedAt());
+            assertNotNull(section.getDeletedAt());
+            assertNotNull(chapter.getDeletedAt());
+
+            VideoInfo updatedVideo = chapter.getVideo();
+            assertNotNull(updatedVideo);
+            assertEquals(ExternalDeletionStatus.REQUESTED, updatedVideo.externalDeletionStatus());
+            assertNotNull(updatedVideo.deletedAt());
+
+            ArgumentCaptor<Id> idCaptor = ArgumentCaptor.forClass(Id.class);
+            ArgumentCaptor<String> uriCaptor = ArgumentCaptor.forClass(String.class);
+
+            verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(idCaptor.capture(), uriCaptor.capture());
+            assertEquals(videoId, idCaptor.getValue().asString());
+            assertEquals(sourceUri, uriCaptor.getValue());
+        }
+
+        @Test
+        @DisplayName("delete should only enqueue videos with NONE status, not REQUESTED or DELETED")
+        void delete_shouldOnlyEnqueueVideosWithNoneStatus() {
+            // GIVEN - Course with 3 videos: NONE, REQUESTED, DELETED
+            VideoInfo videoNone = VideoBuilder.aVideo()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            VideoInfo videoRequested = VideoBuilder.aVideo()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.REQUESTED)
+                    .build();
+
+            VideoInfo videoDeleted = VideoBuilder.aVideo()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.DELETED)
+                    .build();
+
+            Chapter chapter1 = ChapterBuilder.aChapter().withVideo(videoNone).build();
+            Chapter chapter2 = ChapterBuilder.aChapter().withVideo(videoRequested).build();
+            Chapter chapter3 = ChapterBuilder.aChapter().withVideo(videoDeleted).build();
+
+            Section section = SectionBuilder.aSection()
+                    .withChapter(chapter1)
+                    .withChapter(chapter2)
+                    .withChapter(chapter3)
+                    .build();
+
+            Course existingCourse = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(new HashSet<>(Set.of(section)))
+                    .build();
+
+            section.setCourse(existingCourse);
+
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId("admin-user-123")
+                    .rawRoles(RAW_ROLES_ADMIN)
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // WHEN
+            courseUseCases.delete(command);
+
+            // THEN
+            // Only 1 enqueue for videoNone
+            verify(enqueueOutboxEventPort, times(1)).enqueueVideoDeletionRequested(any(Id.class), anyString());
+
+            ArgumentCaptor<Id> idCaptor = ArgumentCaptor.forClass(Id.class);
+            verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(idCaptor.capture(), anyString());
+            assertEquals(videoNone.id().asString(), idCaptor.getValue().asString());
+
+            // Verify all videos have deletedAt
+            assertNotNull(chapter1.getVideo().deletedAt());
+            assertNotNull(chapter2.getVideo().deletedAt());
+            assertNotNull(chapter3.getVideo().deletedAt());
+
+            // Verify externalDeletionStatus transitions
+            assertEquals(ExternalDeletionStatus.REQUESTED, chapter1.getVideo().externalDeletionStatus());
+            assertEquals(ExternalDeletionStatus.REQUESTED, chapter2.getVideo().externalDeletionStatus());
+            assertEquals(ExternalDeletionStatus.DELETED, chapter3.getVideo().externalDeletionStatus());
+
+            verify(softDeleteCoursePort).softDelete(any(Course.class), any(Instant.class));
+        }
+
+        @Test
+        @DisplayName("TUTOR non-owner should fail with UnauthorizedCourseAccessException")
+        void delete_asTutorNonOwner_shouldThrowUnauthorizedCourseAccessException() {
+            // GIVEN
+            Course existingCourse = CourseMother.withVideoNone(EXTERNAL_AUTHOR_ID);
+
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId(OTHER_USER_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // WHEN + THEN
+            assertThrows(UnauthorizedCourseAccessException.class,
+                    () -> courseUseCases.delete(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verifyNoInteractions(softDeleteCoursePort);
+            verifyNoInteractions(enqueueOutboxEventPort);
+        }
+
+        @Test
+        @DisplayName("TUTOR owner should successfully delete own course")
+        void delete_asTutorOwner_shouldSucceed() {
+            // GIVEN
+            Course existingCourse = CourseMother.withVideoNone(EXTERNAL_AUTHOR_ID);
+
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_TUTOR)
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // WHEN
+            courseUseCases.delete(command);
+
+            // THEN
+            verify(softDeleteCoursePort).softDelete(any(Course.class), any(Instant.class));
+            verify(enqueueOutboxEventPort).enqueueVideoDeletionRequested(any(Id.class), anyString());
+        }
+
+        @Test
+        @DisplayName("delete should throw CourseNotFoundException when course not found")
+        void delete_whenCourseNotFound_shouldThrowCourseNotFoundException() {
+            // GIVEN
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_ADMIN)
+                    .build();
+
+            Id courseId = Id.of(COURSE_ID_STRING);
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class)))
+                    .thenThrow(new CourseNotFoundException(courseId));
+
+            // WHEN + THEN
+            assertThrows(CourseNotFoundException.class,
+                    () -> courseUseCases.delete(command));
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verifyNoInteractions(softDeleteCoursePort);
+            verifyNoInteractions(enqueueOutboxEventPort);
+        }
+
+        @Test
+        @DisplayName("delete should throw IllegalStateException when video has null sourceUri")
+        void delete_whenVideoHasNullSourceUri_shouldThrowIllegalStateException() {
+            // GIVEN
+            VideoInfo videoWithoutSourceUri = VideoBuilder.aVideo()
+                    .withoutSourceUri()
+                    .withExternalDeletionStatus(ExternalDeletionStatus.NONE)
+                    .build();
+
+            Chapter chapter = ChapterBuilder.aChapter()
+                    .withVideo(videoWithoutSourceUri)
+                    .build();
+
+            Section section = SectionBuilder.aSection()
+                    .withChapter(chapter)
+                    .build();
+
+            Course existingCourse = Course.builder()
+                    .id(Id.of(COURSE_ID_STRING))
+                    .title(COURSE_TITLE)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .sections(new HashSet<>(Set.of(section)))
+                    .build();
+
+            section.setCourse(existingCourse);
+
+            var command = DeleteCourseCommand.builder()
+                    .courseId(COURSE_ID_STRING)
+                    .externalUserId(EXTERNAL_AUTHOR_ID)
+                    .rawRoles(RAW_ROLES_ADMIN)
+                    .build();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(existingCourse);
+
+            // WHEN + THEN
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> courseUseCases.delete(command));
+
+            assertThat(exception.getMessage()).contains("sourceUri");
+
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verifyNoInteractions(softDeleteCoursePort);
+            verifyNoInteractions(enqueueOutboxEventPort);
         }
     }
 }

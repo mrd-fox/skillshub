@@ -1,9 +1,13 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity;
 
+import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.VideoStatusEnum;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "\"videos\"")
@@ -13,16 +17,15 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 @EqualsAndHashCode(callSuper = true)
+@SQLRestriction("deleted_at is null")
 public class VideoEntity extends AbstractBaseEntity {
 
     @EmbeddedId
     private EntityId videoId;
 
-    // Legacy MinIO/S3 storage key (optional). Keep nullable to support Vimeo-only flows.
     @Column(name = "storage_key")
     private String storageKey;
 
-    // Canonical provider-agnostic URI (required, unique).
     @Column(name = "source_uri", nullable = false, unique = true, length = 512)
     private String sourceUri;
 
@@ -54,10 +57,24 @@ public class VideoEntity extends AbstractBaseEntity {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
-    /**
-     * A chapter can have 0..1 video. Video is associated after init/upload flow.
-     * Keep nullable=true to allow PENDING rows before linkage.
-     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "external_deletion_status", nullable = false, length = 50)
+    @Builder.Default
+    private ExternalDeletionStatus externalDeletionStatus = ExternalDeletionStatus.NONE;
+
+    @Column(name = "delete_requested_at")
+    private Instant deleteRequestedAt;
+
+    @Column(name = "delete_attempt_count", nullable = false)
+    @Builder.Default
+    private Integer deleteAttemptCount = 0;
+
+    @Column(name = "delete_last_error", columnDefinition = "TEXT")
+    private String deleteLastError;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @OneToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(
             name = "chapter_id",

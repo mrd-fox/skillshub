@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-166-007-add-column-updated-at-outbox-events
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: outbox_events
+            columns:
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: outbox_events
+            columnName: updated_at
