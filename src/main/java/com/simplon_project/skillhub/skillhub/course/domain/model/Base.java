@@ -21,12 +21,12 @@ public class Base {
     LocalDateTime updatedAt;
     Instant deletedAt;  // Soft delete support
 
-    /**
-     * Mark this entity as deleted by setting the deletedAt timestamp.
-     * Used for Option B soft delete strategy.
-     */
     public void markAsDeleted() {
         this.deletedAt = Instant.now();
+    }
+
+    public void markAsDeleted(Instant now) {
+        this.deletedAt = now;
     }
 
     /**

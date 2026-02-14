@@ -64,4 +64,20 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 order by c.createdAt desc
             """)
     List<CourseEntity> findByExternalUserId(@Param("externalUserId") String externalUserId);
+
+    /**
+     * Tree load (sections + chapters + video) INCLUDING soft-deleted courses.
+     * Same fetch graph as findByIdWithTree but without c.deletedAt is null filter.
+     * Used for admin operations on soft-deleted courses.
+     * Child filtering still enforced by @SQLRestriction on Section/Chapter/Video.
+     */
+    @Query("""
+                select distinct c
+                from CourseEntity c
+                left join fetch c.sections s
+                left join fetch s.chapters ch
+                left join fetch ch.video v
+                where c.courseId = :id
+            """)
+    Optional<CourseEntity> findByIdWithTreeIncludingDeleted(@Param("id") EntityId id);
 }

@@ -5,7 +5,6 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 
 public interface DeleteCoursePort {
 
-
     void delete(DeleteCourseCommand command);
 }
 

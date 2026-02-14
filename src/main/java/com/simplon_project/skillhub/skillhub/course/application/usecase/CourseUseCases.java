@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.DeleteCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateChapterCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateCourseCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateSectionCommand;
@@ -54,7 +55,8 @@ public class CourseUseCases implements
         GetCoursePort,
         ListPublicCoursesPort,
         GetPublicCourseDetailPort,
-        PublishCoursePort {
+        PublishCoursePort,
+        DeleteCoursePort {
 
     private final CreateNewCoursePort createNewCoursePort;
     private final UpdateCourseStructurePort updateCourseStructurePort;
@@ -68,6 +70,7 @@ public class CourseUseCases implements
 
     private final EnqueueOutboxEventPort enqueueOutboxEventPort;
     private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
+    private final SoftDeleteCoursePort softDeleteCoursePort;
 
     @Transactional("courseTxManager")
     @Override
@@ -83,10 +86,7 @@ public class CourseUseCases implements
 
         var courseId = Id.of(command.courseId());
 
-        var existing = loadCourseWithVideoPort.loadWithVideo(courseId);
-        if (existing == null) {
-            throw new CourseNotFoundException(courseId);
-        }
+        Course existing = loadCourseWithVideoPort.loadWithVideo(courseId);
 
         var roles = Helper.extractUserRoles(command.rawRoles());
 
@@ -119,7 +119,8 @@ public class CourseUseCases implements
             // GUARD: Block structural changes when videos are in-flight
             enforceStructureLock(courseId);
 
-            applySectionsPatch(existing, command.sections());
+            Instant now = Instant.now();
+            applySectionsPatch(existing, command.sections(), now);
         }
 
         return updateCourseStructurePort.updateCourseStructure(existing);
@@ -189,9 +190,6 @@ public class CourseUseCases implements
         var roles = command.userRoles();
 
         Course course = loadCourseWithVideoPort.loadWithVideo(courseId);
-        if (course == null) {
-            throw new CourseNotFoundException(courseId);
-        }
 
         boolean isAdmin = roles.contains(UserRole.ADMIN);
         boolean isTutorOwner = roles.contains(UserRole.TUTOR)
@@ -211,17 +209,41 @@ public class CourseUseCases implements
         return updateCourseStructurePort.updateCourseStructure(course);
     }
 
+    @Transactional("courseTxManager")
+    @Override
+    public void delete(DeleteCourseCommand command) {
+        Id courseId = Id.of(command.courseId());
+        Course existing = loadCourseWithVideoPort.loadWithVideo(courseId);
+
+        var roles = Helper.extractUserRoles(command.rawRoles());
+
+        if (roles.contains(UserRole.ADMIN)) {
+            // no op
+        } else if (roles.contains(UserRole.TUTOR)) {
+            if (!Objects.equals(existing.getExternalUserId(), command.externalUserId())) {
+                throw new UnauthorizedCourseAccessException("Tutor can only delete their own courses");
+            }
+        } else {
+            throw new UnauthorizedCourseAccessException("Only ADMIN or TUTOR can delete a course");
+        }
+
+        Instant now = Instant.now();
+
+        existing.markAsDeleted(now);
+
+        for (Section section : safeSections(existing)) {
+            softDeleteSection(section, now);
+        }
+
+        softDeleteCoursePort.softDelete(existing, now);
+    }
+
     // ========================================================================
     // STRUCTURE LOCK ENFORCEMENT
     // ========================================================================
 
     /**
      * Enforce structure lock: block structural updates when videos are in-flight.
-     * <p>
-     * In-flight statuses: PENDING (upload initialized), PROCESSING (actively processing).
-     * <p>
-     * Note: UPLOADED is NOT considered in-flight in this codebase, as it represents a stable state
-     * before processing begins. If your workflow differs, add UPLOADED to the check set.
      *
      * @param courseId the course ID
      * @throws CourseStructureLockedException if any in-flight video exists
@@ -246,7 +268,7 @@ public class CourseUseCases implements
     // PATCH helpers
     // ========================================================================
 
-    private void applySectionsPatch(Course course, List<UpdateSectionCommand> patchSections) {
+    private void applySectionsPatch(Course course, List<UpdateSectionCommand> patchSections, Instant now) {
 
         Map<Id, Section> existingById = safeSections(course).stream()
                 .filter(s -> s.getId() != null)
@@ -265,7 +287,7 @@ public class CourseUseCases implements
         // Soft delete removed sections (and their chapters/videos)
         for (Section existing : existingById.values()) {
             if (!patchSectionIds.contains(existing.getId())) {
-                softDeleteSection(existing);
+                softDeleteSection(existing, now);
             }
         }
 
@@ -285,7 +307,7 @@ public class CourseUseCases implements
                  * - chapters != null => create chapters based on patch list
                  */
                 if (sectionCmd.chapters() != null) {
-                    applyChaptersPatch(created, sectionCmd.chapters());
+                    applyChaptersPatch(created, sectionCmd.chapters(), now);
                 }
                 continue;
             }
@@ -304,67 +326,12 @@ public class CourseUseCases implements
              * - chapters != null => apply patch (missing => soft-delete)
              */
             if (sectionCmd.chapters() != null) {
-                applyChaptersPatch(current, sectionCmd.chapters());
+                applyChaptersPatch(current, sectionCmd.chapters(), now);
             }
         }
     }
 
-    /**
-     * Soft delete a section and all its chapters/videos.
-     */
-    private void softDeleteSection(Section section) {
-        section.markAsDeleted();
-
-        for (Chapter chapter : safeChapters(section)) {
-            softDeleteChapter(chapter);
-        }
-    }
-
-    /**
-     * Soft delete a chapter and its video (if present).
-     */
-    private void softDeleteChapter(Chapter chapter) {
-        chapter.markAsDeleted();
-
-        VideoInfo video = chapter.getVideo();
-        if (video != null) {
-            VideoInfo updatedVideo = softDeleteVideo(video);
-            chapter.setVideo(updatedVideo);
-        }
-    }
-
-    /**
-     * Soft delete a video and enqueue external deletion request (Outbox).
-     * <p>
-     * Notes:
-     * - This method only updates domain state (VideoInfo) and enqueues outbox.
-     * - Persistence occurs later when updateCourseStructurePort.updateCourseStructure(existing) saves the whole aggregate.
-     */
-    private VideoInfo softDeleteVideo(VideoInfo video) {
-
-        VideoInfo updatedVideo = VideoInfo.builder()
-                .id(video.id())
-                .sourceUri(video.sourceUri())
-                .key(video.key())
-                .duration(video.duration())
-                .format(video.format())
-                .size(video.size())
-                .width(video.width())
-                .height(video.height())
-                .thumbnailUrl(video.thumbnailUrl())
-                .embedHash(video.embedHash())
-                .errorMessage(video.errorMessage())
-                .status(video.status())
-                .externalDeletionStatus(ExternalDeletionStatus.REQUESTED)
-                .deletedAt(Instant.now())
-                .build();
-
-        enqueueOutboxEventPort.enqueueVideoDeletionRequested(video.id(), video.sourceUri());
-
-        return updatedVideo;
-    }
-
-    private void applyChaptersPatch(Section section, List<UpdateChapterCommand> patchChapters) {
+    private void applyChaptersPatch(Section section, List<UpdateChapterCommand> patchChapters, Instant now) {
 
         Map<Id, Chapter> existingById = safeChapters(section).stream()
                 .filter(c -> c.getId() != null)
@@ -383,7 +350,7 @@ public class CourseUseCases implements
         // Soft delete removed chapters (and their videos)
         for (Chapter existing : existingById.values()) {
             if (!patchChapterIds.contains(existing.getId())) {
-                softDeleteChapter(existing);
+                softDeleteChapter(existing, now);
             }
         }
 
@@ -407,6 +374,91 @@ public class CourseUseCases implements
             }
         }
     }
+
+    // ========================================================================
+    // Soft delete helpers (domain state + outbox)
+    // ========================================================================
+
+    /**
+     * Soft delete a section and all its chapters/videos using a consistent timestamp.
+     */
+    private void softDeleteSection(Section section, Instant now) {
+        section.markAsDeleted(now);
+
+        for (Chapter chapter : safeChapters(section)) {
+            softDeleteChapter(chapter, now);
+        }
+    }
+
+    /**
+     * Soft delete a chapter and its video (if present) using a consistent timestamp.
+     */
+    private void softDeleteChapter(Chapter chapter, Instant now) {
+        chapter.markAsDeleted(now);
+
+        VideoInfo video = chapter.getVideo();
+        if (video != null) {
+            VideoInfo updatedVideo = softDeleteVideo(video, now);
+            chapter.setVideo(updatedVideo);
+        }
+    }
+
+    /**
+     * Soft delete a video. If external deletion is not yet requested, enqueue outbox once.
+     */
+    private VideoInfo softDeleteVideo(VideoInfo video, Instant now) {
+        ExternalDeletionStatus currentStatus =
+                (video.externalDeletionStatus() == null) ? ExternalDeletionStatus.NONE : video.externalDeletionStatus();
+
+        boolean alreadyDeleted = video.deletedAt() != null;
+
+        // Idempotence + consistency:
+        // - If already soft-deleted, never enqueue again.
+        // - Ensure status is not NONE after soft delete.
+        boolean needsRequest = !alreadyDeleted && currentStatus == ExternalDeletionStatus.NONE;
+
+        ExternalDeletionStatus nextStatus;
+        if (alreadyDeleted) {
+            // Keep existing terminal state if any; otherwise assume REQUESTED (safe default)
+            if (currentStatus == ExternalDeletionStatus.NONE) {
+                nextStatus = ExternalDeletionStatus.REQUESTED;
+            } else {
+                nextStatus = currentStatus;
+            }
+        } else {
+            nextStatus = needsRequest ? ExternalDeletionStatus.REQUESTED : currentStatus;
+        }
+
+        if (needsRequest) {
+            if (video.sourceUri() == null) {
+                throw new IllegalStateException(
+                        "Video sourceUri is required to enqueue deletion (videoId=" + video.id().asString() + ")"
+                );
+            }
+            enqueueOutboxEventPort.enqueueVideoDeletionRequested(video.id(), video.sourceUri());
+        }
+
+        return VideoInfo.builder()
+                .id(video.id())
+                .sourceUri(video.sourceUri())
+                .key(video.key())
+                .duration(video.duration())
+                .format(video.format())
+                .size(video.size())
+                .width(video.width())
+                .height(video.height())
+                .thumbnailUrl(video.thumbnailUrl())
+                .embedHash(video.embedHash())
+                .errorMessage(video.errorMessage())
+                .status(video.status())
+                .externalDeletionStatus(nextStatus)
+                .deletedAt(now)
+                .build();
+    }
+
+    // ========================================================================
+    // Null-safe accessors
+    // ========================================================================
 
     private Set<Section> safeSections(Course course) {
         if (course.getSections() == null) {
