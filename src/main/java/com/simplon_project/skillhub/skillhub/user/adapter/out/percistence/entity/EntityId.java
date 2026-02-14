@@ -23,16 +23,16 @@ public class EntityId implements Serializable {
         this.value = Objects.requireNonNull(value, "id cannot be null");
     }
 
-    public static com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId of(UUID id) {
-        return new com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId(id);
+    public static EntityId of(UUID id) {
+        return new EntityId(id);
     }
 
-    public static com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId fromString(String id) {
-        return new com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId(UUID.fromString(id));
+    public static EntityId fromString(String id) {
+        return new EntityId(UUID.fromString(id));
     }
 
-    public static com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId random() {
-        return new com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId(UUID.randomUUID());
+    public static EntityId random() {
+        return new EntityId(UUID.randomUUID());
     }
 
     public UUID value() {
@@ -42,9 +42,9 @@ public class EntityId implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId))
+        if (!(o instanceof EntityId))
             return false;
-        com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId entityId = (com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.EntityId) o;
+        EntityId entityId = (EntityId) o;
         return Objects.equals(value, entityId.value);
     }
 

@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-168_create-user-course-table
+      author: Marina DARDE
+      labels: user,course,enrollment
+      context: user
+      changes:
+        - createTable:
+            tableName: user_course
+            columns:
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: course_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: user_course
+            baseColumnNames: user_id
+            referencedTableName: user_account
+            referencedColumnNames: id
+            constraintName: fk_user_course_user_id
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: user_course
+            indexName: idx_user_course_user_id
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: user_course
+            indexName: idx_user_course_course_id
+            columns:
+              - column:
+                  name: course_id
+
+      rollback:
+        - dropTable:
+            tableName: user_course
+            cascadeConstraints: true
