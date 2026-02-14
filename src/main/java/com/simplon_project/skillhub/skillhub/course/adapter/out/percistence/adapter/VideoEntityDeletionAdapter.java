@@ -3,7 +3,9 @@ package com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.ada
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.VideoEntity;
 import com.simplon_project.skillhub.skillhub.course.application.dto.VideoDeletionTarget;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoEntityByIdForRetryPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.LoadVideoEntityByIdPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ResetVideoExternalDeletionPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.SaveVideoEntityPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.ExternalDeletionStatus;
 import jakarta.persistence.EntityManager;
@@ -26,7 +28,11 @@ import java.util.Optional;
  */
 @Slf4j
 @Component
-public class VideoEntityDeletionAdapter implements LoadVideoEntityByIdPort, SaveVideoEntityPort {
+public class VideoEntityDeletionAdapter implements
+        LoadVideoEntityByIdPort,
+        SaveVideoEntityPort,
+        LoadVideoEntityByIdForRetryPort,
+        ResetVideoExternalDeletionPort {
 
     /**
      * IMPORTANT:
@@ -161,5 +167,24 @@ public class VideoEntityDeletionAdapter implements LoadVideoEntityByIdPort, Save
                 .orElseThrow(() -> new IllegalStateException(
                         "Video not found (including soft-deleted): " + videoId
                 ));
+    }
+
+    @Override
+    @Transactional(transactionManager = "courseTxManager")
+    public void resetToRequested(String videoId) {
+
+        VideoEntity entity = loadEntityIncludingSoftDeletedOrThrow(videoId);
+
+        entity.setExternalDeletionStatus(ExternalDeletionStatus.REQUESTED);
+        entity.setDeleteAttemptCount(0);
+        entity.setDeleteLastError(null);
+        // Set deleteRequestedAt if the field exists and was used, or leave as-is
+
+        entityManager.merge(entity);
+
+        log.info(
+                "Video deletion reset to REQUESTED: videoId={} (manual retry)",
+                entity.getVideoId() != null ? entity.getVideoId().value() : null
+        );
     }
 }

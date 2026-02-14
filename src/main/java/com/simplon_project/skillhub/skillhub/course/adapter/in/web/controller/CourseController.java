@@ -6,10 +6,9 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.Creat
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.CreateSectionRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.request.UpdateCourseRequest;
 import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.CourseResponse;
+import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.VideoDeletionRetryResponse;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.PublishCourseCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,6 +37,8 @@ public class CourseController {
     private final GetCoursePort getCoursePort;
     private final CreateSectionPort createSectionPort;
     private final PublishCoursePort publishCoursePort;
+    private final RetryVideoExternalDeletionPort retryVideoExternalDeletionPort;
+    private final DeleteCoursePort deleteCoursePort;
 
     @PostMapping
     @Operation(description = "Create a draft of course")
@@ -258,6 +259,144 @@ public class CourseController {
 
         log.info("✅ Course {} published successfully with status: {}", courseId, publishedCourse.getStatus());
         return CourseResponseMapper.mapToCourseResponse(publishedCourse);
+    }
+
+    @Operation(
+            summary = "Manually retry a FAILED video external deletion",
+            description = "Resets the deletion state to REQUESTED and re-enqueues an outbox event. " +
+                    "Only ADMIN can retry deletions. " +
+                    "The video must be in FAILED external deletion status."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Deletion retry successfully enqueued",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = VideoDeletionRetryResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Video is not in FAILED status",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Missing user context (X-User-Id or X-User-Roles headers)",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Unauthorized - only ADMIN can retry deletions",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Video not found (including soft-deleted)",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            )
+    })
+    @PostMapping("/videos/{videoId}/deletion/retry")
+    @ResponseStatus(HttpStatus.OK)
+    public VideoDeletionRetryResponse retryVideoExternalDeletion(
+            @Parameter(description = "Video id", required = true)
+            @PathVariable @NotBlank String videoId,
+
+            @Parameter(description = "Authenticated user external id (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Id") @NotBlank String externalUserId,
+
+            @Parameter(description = "Authenticated user roles CSV (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Roles") @NotBlank String rawRoles
+    ) {
+        log.info("🔄 Incoming retry video deletion request: videoId={}", videoId);
+        log.info("👤 X-User-Id: {}", externalUserId);
+        log.info("🔐 X-User-Roles: {}", rawRoles);
+
+        var command = RetryVideoExternalDeletionCommand.of(videoId, externalUserId, rawRoles);
+        var result = retryVideoExternalDeletionPort.retry(command);
+
+        log.info("✅ Video deletion retry enqueued: videoId={} status={}",
+                videoId, result.externalDeletionStatus());
+
+        return new VideoDeletionRetryResponse(
+                result.videoId(),
+                result.externalDeletionStatus().name(),
+                result.attempts(),
+                result.lastError()
+        );
+    }
+
+    @Operation(
+            summary = "Delete a course",
+            description = "Deletes a course. Only ADMIN or course owner (TUTOR) can delete."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Course successfully deleted"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Missing user context (X-User-Id or X-User-Roles headers)",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Unauthorized - insufficient role or not course owner",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Course not found",
+                    content = @Content(
+                            mediaType = "application/problem+json",
+                            schema = @Schema(implementation = Problem.class)
+                    )
+            )
+    })
+    @DeleteMapping("/{courseId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteCourse(
+            @Parameter(description = "Course id", required = true)
+            @PathVariable @NotBlank String courseId,
+
+            @Parameter(description = "Authenticated user external id (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Id") @NotBlank String externalUserId,
+
+            @Parameter(description = "Authenticated user roles CSV (injected by Gateway)", required = true)
+            @RequestHeader("X-User-Roles") @NotBlank String rawRoles
+    ) {
+        log.info("🗑️ Incoming deleteCourse request for courseId: {}", courseId);
+        log.info("👤 X-User-Id: {}", externalUserId);
+        log.info("🔐 X-User-Roles: {}", rawRoles);
+
+        var command = DeleteCourseCommand.builder()
+                .externalUserId(externalUserId)
+                .rawRoles(rawRoles)
+                .courseId(courseId)
+                .build();
+        deleteCoursePort.delete(command);
+
+        log.info("✅ Course {} deleted successfully", courseId);
     }
 
 }
