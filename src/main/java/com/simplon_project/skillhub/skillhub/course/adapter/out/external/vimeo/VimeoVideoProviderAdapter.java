@@ -12,8 +12,8 @@ import com.simplon_project.skillhub.skillhub.course.application.port.in.command.
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderDeletionPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderInitPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.VideoProviderPollingPort;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -29,7 +29,6 @@ import static org.springframework.util.StringUtils.hasText;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoProviderPollingPort, VideoProviderDeletionPort {
 
     public static final String PREFIX_VIMEO = "vimeo://";
@@ -47,6 +46,10 @@ public class VimeoVideoProviderAdapter implements VideoProviderInitPort, VideoPr
 
     @Value("${vimeo.access-token}")
     private String accessToken;
+
+    public VimeoVideoProviderAdapter(@Qualifier("vimeoWebClient") WebClient webClient) {
+        this.webClient = webClient;
+    }
 
     @Override
     public VideoUploadInitResult initTusUpload(InitProviderUploadCommand command) {

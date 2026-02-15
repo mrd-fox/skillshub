@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.SearchCoursesByIdsCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCoursesByIdsPort;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
@@ -14,8 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,22 +30,31 @@ class SearchCoursesByIdsUseCaseTest {
     @Mock
     private LoadCoursesByIdsPort loadCoursesByIdsPort;
 
+    @Mock
+    private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
+
     @InjectMocks
     private CourseUseCases useCase;
+
+    private static final UUID EXTERNAL_USER_ID = UUID.randomUUID();
+    private static final String EXTERNAL_USER_ID_STRING = EXTERNAL_USER_ID.toString();
 
     @Nested
     @DisplayName("searchByIds() method")
     class SearchByIdsMethod {
 
         @Test
-        @DisplayName("should call loadCoursesByIdsPort with command courseIds and return result")
-        void searchByIds_shouldCallPortAndReturnResult() {
+        @DisplayName("should call loadCoursesByIdsPort with enrolled course IDs only and return result")
+        void searchByIds_shouldCallPortWithEnrolledCoursesAndReturnResult() {
             // GIVEN
             String uuid1 = UUID.randomUUID().toString();
             String uuid2 = UUID.randomUUID().toString();
             List<String> rawIds = List.of(uuid1, uuid2);
 
-            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds);
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds, EXTERNAL_USER_ID_STRING);
+
+            // User is enrolled in both courses
+            Set<Id> enrolledIds = Set.of(Id.of(uuid1), Id.of(uuid2));
 
             Course course1 = CourseBuilder.aCourse()
                     .withId(uuid1)
@@ -58,6 +68,7 @@ class SearchCoursesByIdsUseCaseTest {
 
             List<Course> expectedCourses = List.of(course1, course2);
 
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
             when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(expectedCourses);
 
             // WHEN
@@ -69,26 +80,28 @@ class SearchCoursesByIdsUseCaseTest {
             assertThat(result).isEqualTo(expectedCourses);
             assertThat(result).containsExactly(course1, course2);
 
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+
             ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
             verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
 
             List<Id> capturedIds = idsCaptor.getValue();
             assertThat(capturedIds).hasSize(2);
-            assertThat(capturedIds).isEqualTo(command.courseIds());
-            assertThat(capturedIds.get(0).asString()).isEqualTo(uuid1);
-            assertThat(capturedIds.get(1).asString()).isEqualTo(uuid2);
         }
 
         @Test
-        @DisplayName("should return empty list when port returns empty list")
-        void searchByIds_shouldReturnEmptyListWhenPortReturnsEmpty() {
+        @DisplayName("should return empty list when user is not enrolled in any requested courses")
+        void searchByIds_shouldReturnEmptyListWhenNotEnrolled() {
             // GIVEN
             String uuid = UUID.randomUUID().toString();
             List<String> rawIds = List.of(uuid);
 
-            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds);
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds, EXTERNAL_USER_ID_STRING);
 
-            when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(Collections.emptyList());
+            // User has no enrollments
+            Set<Id> enrolledIds = Set.of();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
 
             // WHEN
             List<Course> result = useCase.searchByIds(command);
@@ -97,53 +110,65 @@ class SearchCoursesByIdsUseCaseTest {
             assertThat(result).isNotNull();
             assertThat(result).isEmpty();
 
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(command.courseIds());
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCoursesByIdsPort);
         }
 
         @Test
-        @DisplayName("should call port with exact courseIds from command")
-        void searchByIds_shouldPassExactCourseIdsFromCommand() {
+        @DisplayName("should filter out non-enrolled courses from requested list")
+        void searchByIds_shouldFilterNonEnrolledCourses() {
             // GIVEN
             String uuid1 = UUID.randomUUID().toString();
             String uuid2 = UUID.randomUUID().toString();
             String uuid3 = UUID.randomUUID().toString();
             List<String> rawIds = List.of(uuid1, uuid2, uuid3);
 
-            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds);
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(rawIds, EXTERNAL_USER_ID_STRING);
+
+            // User is only enrolled in uuid1
+            Set<Id> enrolledIds = Set.of(Id.of(uuid1));
 
             Course course = CourseBuilder.aCourse().withId(uuid1).build();
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
             when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(List.of(course));
 
             // WHEN
             useCase.searchByIds(command);
 
             // THEN
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+
             ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
             verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
 
             List<Id> capturedIds = idsCaptor.getValue();
-            assertThat(capturedIds).hasSize(3);
+            assertThat(capturedIds).hasSize(1);
             assertThat(capturedIds.get(0).asString()).isEqualTo(uuid1);
-            assertThat(capturedIds.get(1).asString()).isEqualTo(uuid2);
-            assertThat(capturedIds.get(2).asString()).isEqualTo(uuid3);
         }
 
         @Test
-        @DisplayName("should call loadCoursesByIdsPort exactly once")
-        void searchByIds_shouldCallPortExactlyOnce() {
+        @DisplayName("should call enrollment port with correct external user ID")
+        void searchByIds_shouldCallEnrollmentPortWithCorrectUserId() {
             // GIVEN
             String uuid = UUID.randomUUID().toString();
-            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(List.of(uuid));
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(List.of(uuid), EXTERNAL_USER_ID_STRING);
 
+            Set<Id> enrolledIds = Set.of(Id.of(uuid));
             Course course = CourseBuilder.aCourse().withId(uuid).build();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
             when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(List.of(course));
 
             // WHEN
             useCase.searchByIds(command);
 
             // THEN
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(command.courseIds());
-            verifyNoMoreInteractions(loadCoursesByIdsPort);
+            ArgumentCaptor<UUID> userIdCaptor = ArgumentCaptor.forClass(UUID.class);
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(userIdCaptor.capture());
+
+            UUID capturedUserId = userIdCaptor.getValue();
+            assertThat(capturedUserId).isEqualTo(EXTERNAL_USER_ID);
+            verifyNoMoreInteractions(loadEnrolledCourseIdsPort);
         }
 
         @Test
@@ -154,7 +179,13 @@ class SearchCoursesByIdsUseCaseTest {
             String uuid2 = UUID.randomUUID().toString();
             String uuid3 = UUID.randomUUID().toString();
 
-            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(List.of(uuid1, uuid2, uuid3));
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    List.of(uuid1, uuid2, uuid3),
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User is enrolled in all three
+            Set<Id> enrolledIds = Set.of(Id.of(uuid1), Id.of(uuid2), Id.of(uuid3));
 
             Course course3 = CourseBuilder.aCourse().withId(uuid3).withTitle("Third").build();
             Course course1 = CourseBuilder.aCourse().withId(uuid1).withTitle("First").build();
@@ -162,6 +193,7 @@ class SearchCoursesByIdsUseCaseTest {
 
             List<Course> coursesFromPort = List.of(course3, course1, course2);
 
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
             when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(coursesFromPort);
 
             // WHEN

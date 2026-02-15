@@ -7,7 +7,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record SearchCoursesByIdsCommand(
-        List<Id> courseIds
+        List<Id> courseIds,
+        UUID externalUserId
 ) {
 
     public SearchCoursesByIdsCommand {
@@ -16,11 +17,19 @@ public record SearchCoursesByIdsCommand(
         }
 
         courseIds.forEach(id -> Objects.requireNonNull(id, "Course ID cannot be null"));
+
+        if (externalUserId == null) {
+            throw new IllegalArgumentException("External user ID cannot be null");
+        }
     }
 
-    public static SearchCoursesByIdsCommand of(List<String> rawIds) {
+    public static SearchCoursesByIdsCommand of(List<String> rawIds, String externalUserIdRaw) {
         if (rawIds == null || rawIds.isEmpty()) {
             throw new IllegalArgumentException("Course IDs list cannot be null or empty");
+        }
+
+        if (externalUserIdRaw == null || externalUserIdRaw.isBlank()) {
+            throw new IllegalArgumentException("External user ID cannot be null or blank");
         }
 
         List<Id> validatedIds = rawIds.stream()
@@ -32,14 +41,21 @@ public record SearchCoursesByIdsCommand(
                     try {
                         UUID.fromString(rawId);
                     } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Invalid UUID format: " + rawId);
+                        throw new IllegalArgumentException("Invalid UUID format for course ID: " + rawId);
                     }
 
                     return Id.of(rawId);
                 })
                 .toList();
 
-        return new SearchCoursesByIdsCommand(validatedIds);
+        UUID externalUserId;
+        try {
+            externalUserId = UUID.fromString(externalUserIdRaw);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid UUID format for external user ID: " + externalUserIdRaw);
+        }
+
+        return new SearchCoursesByIdsCommand(validatedIds, externalUserId);
     }
 }
 

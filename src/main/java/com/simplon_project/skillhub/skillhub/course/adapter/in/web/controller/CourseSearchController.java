@@ -6,6 +6,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.in.web.response.Cour
 import com.simplon_project.skillhub.skillhub.course.application.port.in.SearchCoursesByIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.SearchCoursesByIdsCommand;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -54,15 +55,17 @@ public class CourseSearchController {
     @PostMapping("/search")
     @ResponseStatus(HttpStatus.OK)
     public List<CourseResponse> searchCoursesByIds(
-            @RequestHeader(name = "X-User-Id", required = false) String externalAuthorId,
-            @RequestHeader(name = "X-User-Roles", required = false) String userRoles,
+            @Parameter(description = "External user ID (Keycloak UUID)", required = true, example = "9a5a94e5-04b2-47b8-9ef2-4426d1b640b2")
+            @RequestHeader("X-User-Id") String externalUserIdRaw,
             @RequestBody @Valid @NotNull SearchCoursesByIdsRequest request
     ) {
 
-        SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(request.ids());
+        SearchCoursesByIdsCommand command = request.mapToCommand(externalUserIdRaw);
         var courses = searchCoursesByIdsPort.searchByIds(command);
 
         return CourseResponseMapper.mapToCourseResponses(courses);
     }
 }
+
+
 

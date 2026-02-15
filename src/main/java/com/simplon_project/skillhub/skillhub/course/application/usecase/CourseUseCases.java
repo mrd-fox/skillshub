@@ -4,6 +4,7 @@ import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
@@ -20,10 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -70,6 +68,7 @@ public class CourseUseCases implements
     private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
     private final SoftDeleteCoursePort softDeleteCoursePort;
     private final LoadCoursesByIdsPort loadCoursesByIdsPort;
+    private final LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
 
     @Transactional("courseTxManager")
     @Override
@@ -476,6 +475,19 @@ public class CourseUseCases implements
     @Override
     @Transactional(readOnly = true, transactionManager = "courseTxManager")
     public List<Course> searchByIds(SearchCoursesByIdsCommand command) {
-        return loadCoursesByIdsPort.loadCoursesByIds(command.courseIds());
+        // Load enrolled course IDs for the user (fail-closed: exceptions propagate)
+        Set<Id> enrolledIds = loadEnrolledCourseIdsPort.loadEnrolledCourseIds(command.externalUserId());
+
+        // Compute intersection: only return courses the user is enrolled in
+        Set<Id> requestedIds = new HashSet<>(command.courseIds());
+        requestedIds.retainAll(enrolledIds);
+
+        // If no enrolled courses in the requested list, return empty
+        if (requestedIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Load and return only the courses the user is entitled to see
+        return loadCoursesByIdsPort.loadCoursesByIds(new ArrayList<>(requestedIds));
     }
 }

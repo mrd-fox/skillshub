@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
@@ -68,6 +69,12 @@ public class CourseUseCasesTest {
 
     @Mock
     SoftDeleteCoursePort softDeleteCoursePort;
+
+    @Mock
+    private LoadCoursesByIdsPort loadCoursesByIdsPort;
+
+    @Mock
+    private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
 
     @InjectMocks
     private CourseUseCases courseUseCases;
@@ -1518,6 +1525,200 @@ public class CourseUseCasesTest {
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
             verifyNoInteractions(softDeleteCoursePort);
             verifyNoInteractions(enqueueOutboxEventPort);
+        }
+    }
+
+    // ========================================================================
+    // SEARCH COURSES BY IDS TESTS (with enrollment entitlement)
+    // ========================================================================
+    @Nested
+    @DisplayName("searchByIds with enrollment entitlement")
+    class SearchByIds {
+
+        private static final UUID EXTERNAL_USER_ID = UUID.randomUUID();
+        private static final String EXTERNAL_USER_ID_STRING = EXTERNAL_USER_ID.toString();
+
+        @Test
+        @DisplayName("should return only enrolled courses from requested list")
+        void searchByIds_shouldReturnOnlyEnrolledCourses() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+            Id idB = Id.of(UUID.randomUUID().toString());
+            Id idC = Id.of(UUID.randomUUID().toString());
+            Id idD = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString(), idB.asString(), idC.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User is enrolled in B, C, D
+            Set<Id> enrolledIds = Set.of(idB, idC, idD);
+
+            Course courseB = Course.builder()
+                    .id(idB)
+                    .title("Course B")
+                    .status(CourseStatusEnum.PUBLISHED)
+                    .build();
+
+            Course courseC = Course.builder()
+                    .id(idC)
+                    .title("Course C")
+                    .status(CourseStatusEnum.PUBLISHED)
+                    .build();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+            when(loadCoursesByIdsPort.loadCoursesByIds(anyList()))
+                    .thenReturn(List.of(courseB, courseC));
+
+            // WHEN
+            List<Course> result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(2);
+            assertThat(result).containsExactlyInAnyOrder(courseB, courseC);
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+
+            ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
+            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
+
+            List<Id> capturedIds = idsCaptor.getValue();
+            assertThat(capturedIds).hasSize(2);
+            assertThat(capturedIds).containsExactlyInAnyOrder(idB, idC);
+
+            verifyNoMoreInteractions(loadEnrolledCourseIdsPort, loadCoursesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should return empty list when user has no enrolled courses")
+        void searchByIds_shouldReturnEmptyListWhenNoEnrolledCourses() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User has no enrollments
+            Set<Id> enrolledIds = Set.of();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+
+            // WHEN
+            List<Course> result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCoursesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should propagate exception when enrollment port throws RuntimeException")
+        void searchByIds_shouldPropagateExceptionWhenEnrollmentPortFails() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            RuntimeException enrollmentException = new RuntimeException("Enrollment service unavailable");
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenThrow(enrollmentException);
+
+            // WHEN + THEN
+            RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+                courseUseCases.searchByIds(command);
+            });
+
+            assertThat(thrown).isEqualTo(enrollmentException);
+            assertThat(thrown.getMessage()).isEqualTo("Enrollment service unavailable");
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCoursesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should return empty list when requested courses are not in enrolled list")
+        void searchByIds_shouldReturnEmptyListWhenNoIntersection() {
+            // GIVEN
+            Id requestedId1 = Id.of(UUID.randomUUID().toString());
+            Id requestedId2 = Id.of(UUID.randomUUID().toString());
+
+            Id enrolledId1 = Id.of(UUID.randomUUID().toString());
+            Id enrolledId2 = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(requestedId1.asString(), requestedId2.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User is enrolled in different courses
+            Set<Id> enrolledIds = Set.of(enrolledId1, enrolledId2);
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+
+            // WHEN
+            List<Course> result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCoursesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should handle single course enrollment correctly")
+        void searchByIds_shouldHandleSingleCourseEnrollment() {
+            // GIVEN
+            Id courseId = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(courseId.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            Set<Id> enrolledIds = Set.of(courseId);
+
+            Course course = Course.builder()
+                    .id(courseId)
+                    .title("Enrolled Course")
+                    .status(CourseStatusEnum.PUBLISHED)
+                    .build();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+            when(loadCoursesByIdsPort.loadCoursesByIds(anyList()))
+                    .thenReturn(List.of(course));
+
+            // WHEN
+            List<Course> result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0)).isEqualTo(course);
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(anyList());
         }
     }
 }

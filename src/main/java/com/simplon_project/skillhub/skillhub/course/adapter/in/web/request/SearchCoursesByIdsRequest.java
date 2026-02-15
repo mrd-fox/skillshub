@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.request;
 
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.SearchCoursesByIdsCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -18,5 +19,9 @@ public record SearchCoursesByIdsRequest(
         )
         List<String> ids
 ) {
+
+    public SearchCoursesByIdsCommand mapToCommand(String externalUserIdRaw) {
+        return SearchCoursesByIdsCommand.of(this.ids, externalUserIdRaw);
+    }
 }
 
