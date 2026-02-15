@@ -1,6 +1,5 @@
 package com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.adapter;
 
-import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.entity.UserEntity;
 import com.simplon_project.skillhub.skillhub.user.adapter.out.percistence.repository.JpaUserRepository;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadInternalUserIdByExternalIdPort;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +27,6 @@ public class LoadInternalUserIdByExternalIdPersistenceAdapter implements LoadInt
      */
     @Override
     public Optional<UUID> loadInternalUserId(UUID externalUserId) {
-        Optional<UserEntity> userEntity = userRepository.findByExternalId(externalUserId);
-
         return userRepository.findByExternalId(externalUserId)
                 .map(user -> user.getId().value());
     }
