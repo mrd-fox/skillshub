@@ -36,15 +36,15 @@ class EnrollInCourseUseCaseTest {
     @InjectMocks
     private EnrollInCourseUseCase enrollInCourseUseCase;
 
-    private UUID externalUserId;
-    private UUID internalUserId;
-    private UUID courseId;
+    private String externalUserId;
+    private String internalUserId;
+    private String courseId;
 
     @BeforeEach
     void setUp() {
-        externalUserId = UUID.randomUUID();
-        internalUserId = UUID.randomUUID();
-        courseId = UUID.randomUUID();
+        externalUserId = UUID.randomUUID().toString();
+        internalUserId = UUID.randomUUID().toString();
+        courseId = UUID.randomUUID().toString();
     }
 
     @Nested
@@ -57,17 +57,17 @@ class EnrollInCourseUseCaseTest {
             // Given
             EnrollInCourseCommand command = EnrollInCourseCommand.of(externalUserId, courseId, "STUDENT");
 
-            when(loadInternalUserIdPort.loadInternalUserId(externalUserId))
-                    .thenReturn(Optional.of(internalUserId));
+            when(loadInternalUserIdPort.loadInternalUserId(UUID.fromString(externalUserId)))
+                    .thenReturn(Optional.of(UUID.fromString(internalUserId)));
 
             // When
             enrollInCourseUseCase.enroll(command);
 
             // Then
             verify(loadInternalUserIdPort, times(1))
-                    .loadInternalUserId(externalUserId);
+                    .loadInternalUserId(UUID.fromString(externalUserId));
             verify(createEnrollmentPort, times(1))
-                    .createIfAbsent(internalUserId, courseId);
+                    .createIfAbsent(UUID.fromString(internalUserId), UUID.fromString(courseId));
         }
 
         @Test
@@ -76,17 +76,17 @@ class EnrollInCourseUseCaseTest {
             // Given
             EnrollInCourseCommand command = EnrollInCourseCommand.of(externalUserId, courseId, "STUDENT, TUTOR");
 
-            when(loadInternalUserIdPort.loadInternalUserId(externalUserId))
-                    .thenReturn(Optional.of(internalUserId));
+            when(loadInternalUserIdPort.loadInternalUserId(UUID.fromString(externalUserId)))
+                    .thenReturn(Optional.of(UUID.fromString(internalUserId)));
 
             // When
             enrollInCourseUseCase.enroll(command);
 
             // Then
             verify(loadInternalUserIdPort, times(1))
-                    .loadInternalUserId(externalUserId);
+                    .loadInternalUserId(UUID.fromString(externalUserId));
             verify(createEnrollmentPort, times(1))
-                    .createIfAbsent(internalUserId, courseId);
+                    .createIfAbsent(UUID.fromString(internalUserId), UUID.fromString(courseId));
         }
     }
 
@@ -153,7 +153,7 @@ class EnrollInCourseUseCaseTest {
             // Given
             EnrollInCourseCommand command = EnrollInCourseCommand.of(externalUserId, courseId, "STUDENT");
 
-            when(loadInternalUserIdPort.loadInternalUserId(externalUserId))
+            when(loadInternalUserIdPort.loadInternalUserId(UUID.fromString(externalUserId)))
                     .thenReturn(Optional.empty());
 
             // When & Then
@@ -163,7 +163,7 @@ class EnrollInCourseUseCaseTest {
 
             // Verify port interactions
             verify(loadInternalUserIdPort, times(1))
-                    .loadInternalUserId(externalUserId);
+                    .loadInternalUserId(UUID.fromString(externalUserId));
             verify(createEnrollmentPort, never())
                     .createIfAbsent(any(), any());
         }

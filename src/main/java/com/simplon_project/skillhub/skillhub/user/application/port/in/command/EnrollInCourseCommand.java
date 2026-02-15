@@ -4,8 +4,7 @@ import java.util.UUID;
 
 /**
  * Command to enroll a user in a course.
- * Immutable value object.
- * Validation is performed at construction time via the static factory method.
+ * Validation and parsing are performed at construction time.
  */
 public record EnrollInCourseCommand(
         UUID externalUserId,
@@ -13,39 +12,20 @@ public record EnrollInCourseCommand(
         String rawRoles
 ) {
 
-    /**
-     * Safe factory that validates inputs at build time.
-     *
-     * @param externalUserId external user UUID (Keycloak id)
-     * @param courseId       course UUID
-     * @param rawRoles       roles as CSV string
-     * @return validated command instance
-     */
-    public static EnrollInCourseCommand of(UUID externalUserId,
-                                           UUID courseId,
+    public static EnrollInCourseCommand of(String externalUserId,
+                                           String courseId,
                                            String rawRoles) {
 
-        if (externalUserId == null) {
-            throw new IllegalArgumentException("externalUserId cannot be null");
-        }
-
-        if (courseId == null) {
-            throw new IllegalArgumentException("courseId cannot be null");
-        }
+        UUID externalUserIdUuid = parseUuid(externalUserId, "externalUserId");
+        UUID courseIdUuid = parseUuid(courseId, "courseId");
 
         if (rawRoles == null || rawRoles.isBlank()) {
             throw new IllegalArgumentException("rawRoles cannot be null or blank");
         }
 
-        return new EnrollInCourseCommand(externalUserId, courseId, rawRoles);
+        return new EnrollInCourseCommand(externalUserIdUuid, courseIdUuid, rawRoles);
     }
 
-    /**
-     * Check if the user has STUDENT role.
-     * Unknown roles are ignored.
-     *
-     * @return true if STUDENT role is present, false otherwise
-     */
     public boolean hasStudentRole() {
         String[] parts = rawRoles.split(",");
         for (String part : parts) {
@@ -55,5 +35,17 @@ public record EnrollInCourseCommand(
             }
         }
         return false;
+    }
+
+    private static UUID parseUuid(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " cannot be null or blank");
+        }
+
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(fieldName + " must be a valid UUID: " + value);
+        }
     }
 }
