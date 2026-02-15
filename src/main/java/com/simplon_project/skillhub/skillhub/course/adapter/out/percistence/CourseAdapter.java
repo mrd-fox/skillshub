@@ -7,10 +7,7 @@ import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapp
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseEntityDetailMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseSummaryMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CreateNewCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCourseDetailPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCoursesPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
@@ -23,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Component
@@ -31,7 +29,8 @@ public class CourseAdapter implements
         CreateNewCoursePort,
         FindCoursePort,
         LoadPublicCoursesPort,
-        LoadPublicCourseDetailPort {
+        LoadPublicCourseDetailPort,
+        LoadCoursesByIdsPort {
 
 
     private final JpaCourseRepository courseJpaRepository;
@@ -98,6 +97,22 @@ public class CourseAdapter implements
                         EntityId.fromString(courseId.asString())
                 )
                 .map(PublicCourseEntityDetailMapper::mapToDomain);
+    }
+
+    // =========================
+    // BATCH SEARCH
+    // =========================
+
+    @Override
+    public List<Course> loadCoursesByIds(List<Id> courseIds) {
+
+        List<UUID> uuids = courseIds.stream()
+                .map(Id::asUUID)
+                .toList();
+
+        List<CourseEntity> entities = courseJpaRepository.findAllByIdIn(uuids);
+
+        return CourseEntityMapper.mapToDomain(entities, new CycleAvoidingMappingContext());
     }
 
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityId> {
@@ -80,4 +81,13 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
                 where c.courseId = :id
             """)
     Optional<CourseEntity> findByIdWithTreeIncludingDeleted(@Param("id") EntityId id);
+
+    @Query("""
+                select c
+                from CourseEntity c
+                where c.courseId.value in :ids
+                  and c.deletedAt is null
+                order by c.createdAt desc
+            """)
+    List<CourseEntity> findAllByIdIn(@Param("ids") List<UUID> ids);
 }
