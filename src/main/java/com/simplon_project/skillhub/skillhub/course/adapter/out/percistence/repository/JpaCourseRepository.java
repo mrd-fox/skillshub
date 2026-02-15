@@ -83,8 +83,11 @@ public interface JpaCourseRepository extends JpaRepository<CourseEntity, EntityI
     Optional<CourseEntity> findByIdWithTreeIncludingDeleted(@Param("id") EntityId id);
 
     @Query("""
-                select c
+                select distinct c
                 from CourseEntity c
+                left join fetch c.sections s
+                left join fetch s.chapters ch
+                left join fetch ch.video v
                 where c.courseId.value in :ids
                   and c.deletedAt is null
                 order by c.createdAt desc

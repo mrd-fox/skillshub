@@ -30,7 +30,7 @@ class SearchCoursesByIdsUseCaseTest {
     private LoadCoursesByIdsPort loadCoursesByIdsPort;
 
     @InjectMocks
-    private SearchCoursesByIdsUseCase useCase;
+    private CourseUseCases useCase;
 
     @Nested
     @DisplayName("searchByIds() method")

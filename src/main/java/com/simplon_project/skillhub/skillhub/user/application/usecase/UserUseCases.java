@@ -39,13 +39,13 @@ public class UserUseCases implements CreateUserPort, GetUserByIdPort, GetUserByE
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "userTxManager")
     public User getUserById(GetUserByIdCommand command) {
         return loadUserPort.loadUserById(command.toDomainId());
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "userTxManager")
     public GetUserByExternalIdResult getUserByExternalId(GetUserByExternalIdCommand command) {
 
         var externalId = command.toExternalId();

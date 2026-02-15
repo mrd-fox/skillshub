@@ -3,10 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.DeleteCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateChapterCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateSectionCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
@@ -56,7 +53,8 @@ public class CourseUseCases implements
         ListPublicCoursesPort,
         GetPublicCourseDetailPort,
         PublishCoursePort,
-        DeleteCoursePort {
+        DeleteCoursePort,
+        SearchCoursesByIdsPort {
 
     private final CreateNewCoursePort createNewCoursePort;
     private final UpdateCourseStructurePort updateCourseStructurePort;
@@ -71,6 +69,7 @@ public class CourseUseCases implements
     private final EnqueueOutboxEventPort enqueueOutboxEventPort;
     private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
     private final SoftDeleteCoursePort softDeleteCoursePort;
+    private final LoadCoursesByIdsPort loadCoursesByIdsPort;
 
     @Transactional("courseTxManager")
     @Override
@@ -472,5 +471,11 @@ public class CourseUseCases implements
             return Set.of();
         }
         return section.getChapters();
+    }
+
+    @Override
+    @Transactional(readOnly = true, transactionManager = "courseTxManager")
+    public List<Course> searchByIds(SearchCoursesByIdsCommand command) {
+        return loadCoursesByIdsPort.loadCoursesByIds(command.courseIds());
     }
 }

@@ -54,14 +54,13 @@ public class CourseSearchController {
     @PostMapping("/search")
     @ResponseStatus(HttpStatus.OK)
     public List<CourseResponse> searchCoursesByIds(
+            @RequestHeader(name = "X-User-Id", required = false) String externalAuthorId,
+            @RequestHeader(name = "X-User-Roles", required = false) String userRoles,
             @RequestBody @Valid @NotNull SearchCoursesByIdsRequest request
     ) {
-        log.debug("Searching courses by IDs: {}", request.ids());
 
         SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(request.ids());
         var courses = searchCoursesByIdsPort.searchByIds(command);
-
-        log.debug("Found {} courses out of {} requested IDs", courses.size(), request.ids().size());
 
         return CourseResponseMapper.mapToCourseResponses(courses);
     }
