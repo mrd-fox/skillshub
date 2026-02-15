@@ -8,7 +8,9 @@ import com.simplon_project.skillhub.skillhub.user.application.port.in.command.Cr
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByExternalIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.GetUserByIdCommand;
 import com.simplon_project.skillhub.skillhub.user.application.port.in.command.UpdateUserCommand;
+import com.simplon_project.skillhub.skillhub.user.application.port.in.dto.GetUserByExternalIdResult;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.FindUserByExternalIdPort;
+import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.LoadUserPort;
 import com.simplon_project.skillhub.skillhub.user.application.port.out.SaveUserPort;
 import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -27,6 +30,7 @@ public class UserUseCases implements CreateUserPort, GetUserByIdPort, GetUserByE
     private final SaveUserPort saveUserPort;
     private final LoadUserPort loadUserPort;
     private final FindUserByExternalIdPort findUserByExternalIdPort;
+    private final LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
 
     @Override
     public User create(CreateUserCommand command) {
@@ -41,8 +45,15 @@ public class UserUseCases implements CreateUserPort, GetUserByIdPort, GetUserByE
     }
 
     @Override
-    public User getUserByExternalId(GetUserByExternalIdCommand command) {
-        return findUserByExternalIdPort.findUserByExternalId(command.toExternalId());
+    @Transactional(readOnly = true)
+    public GetUserByExternalIdResult getUserByExternalId(GetUserByExternalIdCommand command) {
+
+        var externalId = command.toExternalId();
+        var user = findUserByExternalIdPort.findUserByExternalId(externalId);
+
+        List<UUID> enrolledCourseIds = loadEnrolledCourseIdsPort.loadCourseIds(user.getId().asUUID());
+
+        return new GetUserByExternalIdResult(user, enrolledCourseIds);
     }
 
     @Override
