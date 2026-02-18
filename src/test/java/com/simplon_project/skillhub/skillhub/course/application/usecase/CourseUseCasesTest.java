@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.IsUserEnrolledInCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
@@ -75,6 +76,9 @@ public class CourseUseCasesTest {
 
     @Mock
     private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
+
+    @Mock
+    private IsUserEnrolledInCoursePort isUserEnrolledInCoursePort;
 
     @InjectMocks
     private CourseUseCases courseUseCases;
@@ -730,6 +734,91 @@ public class CourseUseCasesTest {
             // WHEN + THEN
             assertThrows(CourseNotFoundException.class,
                     () -> courseUseCases.getPublicCourseDetail(command));
+        }
+    }
+
+    // ========================================================================
+    // GET STUDENT COURSE TESTS
+    // ========================================================================
+    @Nested
+    @DisplayName("getStudentCourse (get method)")
+    class GetStudentCourse {
+
+        @Test
+        @DisplayName("ADMIN should access any course without enrollment check")
+        void get_asAdmin_shouldReturnCourse() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "ADMIN");
+            var course = buildCourse();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN
+            var result = courseUseCases.get(command);
+
+            // THEN
+            assertNotNull(result);
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(isUserEnrolledInCoursePort, never()).isEnrolled(any(), any());
+        }
+
+        @Test
+        @DisplayName("STUDENT enrolled should access PUBLISHED course")
+        void get_asEnrolledStudent_shouldReturnCourse() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+            var course = buildCourse().toBuilder().status(CourseStatusEnum.PUBLISHED).build();
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(true);
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN
+            var result = courseUseCases.get(command);
+
+            // THEN
+            assertNotNull(result);
+            assertEquals(CourseStatusEnum.PUBLISHED, result.getStatus());
+            verify(isUserEnrolledInCoursePort).isEnrolled(any(UUID.class), any(UUID.class));
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT not enrolled should throw 403")
+        void get_asNotEnrolledStudent_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(false);
+
+            // WHEN + THEN
+            assertThrows(StudentNotEnrolledException.class, () -> courseUseCases.get(command));
+            verify(isUserEnrolledInCoursePort).isEnrolled(any(UUID.class), any(UUID.class));
+            verify(loadCourseWithVideoPort, never()).loadWithVideo(any(Id.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT accessing DRAFT course should throw 404")
+        void get_asDraftCourse_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+            var course = buildCourse().toBuilder().status(CourseStatusEnum.DRAFT).build();
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(true);
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN + THEN
+            assertThrows(CourseNotAccessibleException.class, () -> courseUseCases.get(command));
+        }
+
+        @Test
+        @DisplayName("TUTOR without STUDENT role should throw 403")
+        void get_asTutorOnly_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "TUTOR");
+
+            // WHEN + THEN
+            assertThrows(UnauthorizedCourseAccessException.class, () -> courseUseCases.get(command));
+            verify(isUserEnrolledInCoursePort, never()).isEnrolled(any(), any());
         }
     }
 

@@ -4,13 +4,16 @@ import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.IsUserEnrolledInCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.*;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseNotAccessibleException;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseStructureLockedException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.StudentNotEnrolledException;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import com.simplon_project.skillhub.skillhub.course.domain.policy.CourseAccessPolicy;
@@ -48,6 +51,7 @@ public class CourseUseCases implements
         UpdateCoursePort,
         UploadMediaPort,
         GetCoursePort,
+        GetStudentCoursePort,
         ListPublicCoursesPort,
         GetPublicCourseDetailPort,
         PublishCoursePort,
@@ -69,6 +73,7 @@ public class CourseUseCases implements
     private final SoftDeleteCoursePort softDeleteCoursePort;
     private final LoadCoursesByIdsPort loadCoursesByIdsPort;
     private final LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
+    private final IsUserEnrolledInCoursePort isUserEnrolledInCoursePort;
 
     @Transactional("courseTxManager")
     @Override
@@ -167,6 +172,42 @@ public class CourseUseCases implements
         }
 
         return loadCourseWithVideoPort.loadWithVideo(courseId);
+    }
+
+    @Override
+    @Transactional(value = "courseTxManager", readOnly = true)
+    public Course get(GetStudentCourseCommand command) {
+        var roles = command.userRoles();
+
+        // Only ADMIN or STUDENT can access
+        if (!roles.contains(UserRole.ADMIN) && !roles.contains(UserRole.STUDENT)) {
+            throw new UnauthorizedCourseAccessException("Access restricted to ADMIN or STUDENT roles");
+        }
+
+        var courseId = UUID.fromString(command.courseId());
+        var domainCourseId = Id.of(command.courseId());
+
+        // ADMIN: full access to any course
+        if (roles.contains(UserRole.ADMIN)) {
+            return loadCourseWithVideoPort.loadWithVideo(domainCourseId);
+        }
+
+        // STUDENT: verify enrollment
+        var externalUserId = UUID.fromString(command.externalUserId());
+        var isEnrolled = isUserEnrolledInCoursePort.isEnrolled(externalUserId, courseId);
+
+        if (!isEnrolled) {
+            throw new StudentNotEnrolledException(command.courseId());
+        }
+
+        var course = loadCourseWithVideoPort.loadWithVideo(domainCourseId);
+
+        // Students can only access PUBLISHED courses
+        if (course.getStatus() != CourseStatusEnum.PUBLISHED) {
+            throw new CourseNotAccessibleException(command.courseId());
+        }
+
+        return course;
     }
 
     @Override
