@@ -72,6 +72,7 @@ public class CourseUseCases implements
     private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
     private final SoftDeleteCoursePort softDeleteCoursePort;
     private final LoadCoursesByIdsPort loadCoursesByIdsPort;
+    private final LoadCourseSummariesByIdsPort loadCourseSummariesByIdsPort;
     private final LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
     private final IsUserEnrolledInCoursePort isUserEnrolledInCoursePort;
 
@@ -135,12 +136,12 @@ public class CourseUseCases implements
     }
 
     @Override
-    public List<Course> getCourses(com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand command) {
+    public List<Course> getCourses(GetCoursesCommand command) {
         return findCoursePort.findByExternalUserId(command.externalAuthorId());
     }
 
     @Override
-    public Course getCourse(com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand command) {
+    public Course getCourse(GetCourseCommand command) {
         var courseId = Id.of(command.courseId());
         var externalUserId = command.externalAuthorId();
         var roles = command.userRoles();
@@ -276,6 +277,27 @@ public class CourseUseCases implements
 
         softDeleteCoursePort.softDelete(existing, now);
     }
+
+
+    @Override
+    @Transactional(readOnly = true, transactionManager = "courseTxManager")
+    public List<CourseSummary> searchByIds(SearchCoursesByIdsCommand command) {
+        // Load enrolled course IDs for the user (fail-closed: exceptions propagate)
+        var enrolledIds = loadEnrolledCourseIdsPort.loadEnrolledCourseIds(command.externalUserId());
+
+        // Compute intersection: only return courses the user is enrolled in
+        var requestedIds = new HashSet<>(command.courseIds());
+        requestedIds.retainAll(enrolledIds);
+
+        // If no enrolled courses in the requested list, return empty
+        if (requestedIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Load lightweight summaries (no sections/chapters/videos) for student dashboard
+        return loadCourseSummariesByIdsPort.loadSummariesByIds(new ArrayList<>(requestedIds));
+    }
+
 
     // ========================================================================
     // STRUCTURE LOCK ENFORCEMENT
@@ -513,22 +535,5 @@ public class CourseUseCases implements
         return section.getChapters();
     }
 
-    @Override
-    @Transactional(readOnly = true, transactionManager = "courseTxManager")
-    public List<Course> searchByIds(SearchCoursesByIdsCommand command) {
-        // Load enrolled course IDs for the user (fail-closed: exceptions propagate)
-        Set<Id> enrolledIds = loadEnrolledCourseIdsPort.loadEnrolledCourseIds(command.externalUserId());
 
-        // Compute intersection: only return courses the user is enrolled in
-        Set<Id> requestedIds = new HashSet<>(command.courseIds());
-        requestedIds.retainAll(enrolledIds);
-
-        // If no enrolled courses in the requested list, return empty
-        if (requestedIds.isEmpty()) {
-            return List.of();
-        }
-
-        // Load and return only the courses the user is entitled to see
-        return loadCoursesByIdsPort.loadCoursesByIds(new ArrayList<>(requestedIds));
-    }
 }

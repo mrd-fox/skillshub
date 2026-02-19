@@ -2,10 +2,10 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.SearchCoursesByIdsCommand;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCoursesByIdsPort;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadCourseSummariesByIdsPort;
+import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import com.simplon_project.skillhub.skillhub.course.domain.model.CourseSummary;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
-import com.simplon_project.skillhub.skillhub.helpers.builders.CourseBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.*;
 class SearchCoursesByIdsUseCaseTest {
 
     @Mock
-    private LoadCoursesByIdsPort loadCoursesByIdsPort;
+    private LoadCourseSummariesByIdsPort loadCourseSummariesByIdsPort;
 
     @Mock
     private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
@@ -56,23 +57,31 @@ class SearchCoursesByIdsUseCaseTest {
             // User is enrolled in both courses
             Set<Id> enrolledIds = Set.of(Id.of(uuid1), Id.of(uuid2));
 
-            Course course1 = CourseBuilder.aCourse()
-                    .withId(uuid1)
-                    .withTitle("Course 1")
-                    .build();
+            var course1 = CourseSummary.of(
+                    Id.of(uuid1),
+                    "Course 1",
+                    "Description 1",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
-            Course course2 = CourseBuilder.aCourse()
-                    .withId(uuid2)
-                    .withTitle("Course 2")
-                    .build();
+            var course2 = CourseSummary.of(
+                    Id.of(uuid2),
+                    "Course 2",
+                    "Description 2",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
-            List<Course> expectedCourses = List.of(course1, course2);
+            var expectedCourses = List.of(course1, course2);
 
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(expectedCourses);
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(any())).thenReturn(expectedCourses);
 
             // WHEN
-            List<Course> result = useCase.searchByIds(command);
+            var result = useCase.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
@@ -83,7 +92,7 @@ class SearchCoursesByIdsUseCaseTest {
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
 
             ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(idsCaptor.capture());
 
             List<Id> capturedIds = idsCaptor.getValue();
             assertThat(capturedIds).hasSize(2);
@@ -104,14 +113,14 @@ class SearchCoursesByIdsUseCaseTest {
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
 
             // WHEN
-            List<Course> result = useCase.searchByIds(command);
+            var result = useCase.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
             assertThat(result).isEmpty();
 
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
-            verifyNoInteractions(loadCoursesByIdsPort);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
         }
 
         @Test
@@ -128,9 +137,16 @@ class SearchCoursesByIdsUseCaseTest {
             // User is only enrolled in uuid1
             Set<Id> enrolledIds = Set.of(Id.of(uuid1));
 
-            Course course = CourseBuilder.aCourse().withId(uuid1).build();
+            var course = CourseSummary.of(
+                    Id.of(uuid1),
+                    "Course 1",
+                    "Description",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(List.of(course));
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(any())).thenReturn(List.of(course));
 
             // WHEN
             useCase.searchByIds(command);
@@ -139,7 +155,7 @@ class SearchCoursesByIdsUseCaseTest {
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
 
             ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(idsCaptor.capture());
 
             List<Id> capturedIds = idsCaptor.getValue();
             assertThat(capturedIds).hasSize(1);
@@ -154,10 +170,17 @@ class SearchCoursesByIdsUseCaseTest {
             SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(List.of(uuid), EXTERNAL_USER_ID_STRING);
 
             Set<Id> enrolledIds = Set.of(Id.of(uuid));
-            Course course = CourseBuilder.aCourse().withId(uuid).build();
+            var course = CourseSummary.of(
+                    Id.of(uuid),
+                    "Course",
+                    "Description",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(List.of(course));
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(any())).thenReturn(List.of(course));
 
             // WHEN
             useCase.searchByIds(command);
@@ -187,17 +210,38 @@ class SearchCoursesByIdsUseCaseTest {
             // User is enrolled in all three
             Set<Id> enrolledIds = Set.of(Id.of(uuid1), Id.of(uuid2), Id.of(uuid3));
 
-            Course course3 = CourseBuilder.aCourse().withId(uuid3).withTitle("Third").build();
-            Course course1 = CourseBuilder.aCourse().withId(uuid1).withTitle("First").build();
-            Course course2 = CourseBuilder.aCourse().withId(uuid2).withTitle("Second").build();
+            var course3 = CourseSummary.of(
+                    Id.of(uuid3),
+                    "Third",
+                    "Description 3",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+            var course1 = CourseSummary.of(
+                    Id.of(uuid1),
+                    "First",
+                    "Description 1",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+            var course2 = CourseSummary.of(
+                    Id.of(uuid2),
+                    "Second",
+                    "Description 2",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
-            List<Course> coursesFromPort = List.of(course3, course1, course2);
+            var coursesFromPort = List.of(course3, course1, course2);
 
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID)).thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(any())).thenReturn(coursesFromPort);
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(any())).thenReturn(coursesFromPort);
 
             // WHEN
-            List<Course> result = useCase.searchByIds(command);
+            var result = useCase.searchByIds(command);
 
             // THEN
             assertThat(result).hasSize(3);

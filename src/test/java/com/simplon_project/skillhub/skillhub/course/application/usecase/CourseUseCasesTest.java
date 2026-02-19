@@ -72,7 +72,7 @@ public class CourseUseCasesTest {
     SoftDeleteCoursePort softDeleteCoursePort;
 
     @Mock
-    private LoadCoursesByIdsPort loadCoursesByIdsPort;
+    private LoadCourseSummariesByIdsPort loadCourseSummariesByIdsPort;
 
     @Mock
     private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
@@ -93,8 +93,10 @@ public class CourseUseCasesTest {
     public static final CourseStatusEnum COURSE_STATUS_PUBLISHED = CourseStatusEnum.PUBLISHED;
     public static final LocalDateTime CREATED_AT = LocalDateTime.now();
     public static final LocalDateTime UPDATED_AT = LocalDateTime.now();
-    public static final String EXTERNAL_AUTHOR_ID = "author-123";
-    public static final String OTHER_USER_ID = "other-user-456";
+    public static final UUID EXTERNAL_AUTHOR_UUID = UUID.randomUUID();
+    public static final String EXTERNAL_AUTHOR_ID = EXTERNAL_AUTHOR_UUID.toString();
+    public static final UUID OTHER_USER_UUID = UUID.randomUUID();
+    public static final String OTHER_USER_ID = OTHER_USER_UUID.toString();
     public static final String RAW_ROLES_TUTOR = "TUTOR";
     public static final String RAW_ROLES_ADMIN = "ADMIN";
     public static final String RAW_ROLES_STUDENT = "STUDENT";
@@ -1645,25 +1647,31 @@ public class CourseUseCasesTest {
             // User is enrolled in B, C, D
             Set<Id> enrolledIds = Set.of(idB, idC, idD);
 
-            Course courseB = Course.builder()
-                    .id(idB)
-                    .title("Course B")
-                    .status(CourseStatusEnum.PUBLISHED)
-                    .build();
+            var courseB = CourseSummary.of(
+                    idB,
+                    "Course B",
+                    "Description B",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
-            Course courseC = Course.builder()
-                    .id(idC)
-                    .title("Course C")
-                    .status(CourseStatusEnum.PUBLISHED)
-                    .build();
+            var courseC = CourseSummary.of(
+                    idC,
+                    "Course C",
+                    "Description C",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
                     .thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(anyList()))
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(anyList()))
                     .thenReturn(List.of(courseB, courseC));
 
             // WHEN
-            List<Course> result = courseUseCases.searchByIds(command);
+            var result = courseUseCases.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
@@ -1673,13 +1681,13 @@ public class CourseUseCasesTest {
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
 
             ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(idsCaptor.capture());
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(idsCaptor.capture());
 
             List<Id> capturedIds = idsCaptor.getValue();
             assertThat(capturedIds).hasSize(2);
             assertThat(capturedIds).containsExactlyInAnyOrder(idB, idC);
 
-            verifyNoMoreInteractions(loadEnrolledCourseIdsPort, loadCoursesByIdsPort);
+            verifyNoMoreInteractions(loadEnrolledCourseIdsPort, loadCourseSummariesByIdsPort);
         }
 
         @Test
@@ -1701,14 +1709,14 @@ public class CourseUseCasesTest {
                     .thenReturn(enrolledIds);
 
             // WHEN
-            List<Course> result = courseUseCases.searchByIds(command);
+            var result = courseUseCases.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
             assertThat(result).isEmpty();
 
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
-            verifyNoInteractions(loadCoursesByIdsPort);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
         }
 
         @Test
@@ -1737,7 +1745,7 @@ public class CourseUseCasesTest {
             assertThat(thrown.getMessage()).isEqualTo("Enrollment service unavailable");
 
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
-            verifyNoInteractions(loadCoursesByIdsPort);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
         }
 
         @Test
@@ -1763,14 +1771,14 @@ public class CourseUseCasesTest {
                     .thenReturn(enrolledIds);
 
             // WHEN
-            List<Course> result = courseUseCases.searchByIds(command);
+            var result = courseUseCases.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
             assertThat(result).isEmpty();
 
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
-            verifyNoInteractions(loadCoursesByIdsPort);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
         }
 
         @Test
@@ -1787,19 +1795,22 @@ public class CourseUseCasesTest {
 
             Set<Id> enrolledIds = Set.of(courseId);
 
-            Course course = Course.builder()
-                    .id(courseId)
-                    .title("Enrolled Course")
-                    .status(CourseStatusEnum.PUBLISHED)
-                    .build();
+            var course = CourseSummary.of(
+                    courseId,
+                    "Enrolled Course",
+                    "Description",
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
 
             when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
                     .thenReturn(enrolledIds);
-            when(loadCoursesByIdsPort.loadCoursesByIds(anyList()))
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(anyList()))
                     .thenReturn(List.of(course));
 
             // WHEN
-            List<Course> result = courseUseCases.searchByIds(command);
+            var result = courseUseCases.searchByIds(command);
 
             // THEN
             assertThat(result).isNotNull();
@@ -1807,7 +1818,7 @@ public class CourseUseCasesTest {
             assertThat(result.get(0)).isEqualTo(course);
 
             verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
-            verify(loadCoursesByIdsPort, times(1)).loadCoursesByIds(anyList());
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(anyList());
         }
     }
 }
