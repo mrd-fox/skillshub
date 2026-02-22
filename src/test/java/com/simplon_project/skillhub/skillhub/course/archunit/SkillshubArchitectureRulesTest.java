@@ -31,6 +31,13 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 public class SkillshubArchitectureRulesTest {
 
     // ---------------------------------------------------------
+    // Module root packages (avoid false positives from "..user.." patterns)
+    // ---------------------------------------------------------
+    private static final String COURSE_ROOT = "com.simplon_project.skillhub.skillhub.course..";
+    private static final String USER_ROOT = "com.simplon_project.skillhub.skillhub.user..";
+    private static final String STORAGE_ROOT = "com.simplon_project.skillhub.skillhub.storage..";
+
+    // ---------------------------------------------------------
     // 1) Spring stereotypes policy
     // ---------------------------------------------------------
 
@@ -203,15 +210,34 @@ public class SkillshubArchitectureRulesTest {
     // 5) Modulith boundaries: course, user, storage isolation
     // ---------------------------------------------------------
 
+    /**
+     * Course module may ONLY depend on user.api for enrollment entitlement checks.
+     * This is an intentional exception to enable the course module to verify user enrollments
+     * through the user module's exported public API.
+     * <p>
+     * FORBIDDEN dependencies from course to user:
+     * - user.adapter.. (adapters are internal implementation)
+     * - user.domain.. (domain is internal)
+     * - user.application.. (application layer is internal)
+     * <p>
+     * ALLOWED dependency:
+     * - user.api.. (exported public API for inter-module communication)
+     */
     @ArchTest
-    void courseModule_mustNotDependOnUserModule(JavaClasses classes) {
+    void courseModule_mustNotDependOnUserModule_exceptApi(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..course..")
+                .resideInAPackage(COURSE_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..user..")
-                .because("Course and User are separate Modulith modules; share only through common.")
+                .resideInAnyPackage(
+                        "com.simplon_project.skillhub.skillhub.user.adapter..",
+                        "com.simplon_project.skillhub.skillhub.user.domain..",
+                        "com.simplon_project.skillhub.skillhub.user.application.."
+                )
+                .because("Course module may ONLY depend on user.api (exported public API). " +
+                        "All other user packages (adapters, domain, application) are forbidden. " +
+                        "This ensures course accesses user module only through its explicit public interface.")
                 .check(classes);
     }
 
@@ -219,10 +245,10 @@ public class SkillshubArchitectureRulesTest {
     void courseModule_mustNotDependOnStorageModule(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..course..")
+                .resideInAPackage(COURSE_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..storage..")
+                .resideInAPackage(STORAGE_ROOT)
                 .because("Course and Storage are separate Modulith modules; share only through common.")
                 .check(classes);
     }
@@ -231,10 +257,10 @@ public class SkillshubArchitectureRulesTest {
     void userModule_mustNotDependOnCourseModule(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..user..")
+                .resideInAPackage(USER_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..course..")
+                .resideInAPackage(COURSE_ROOT)
                 .because("User and Course are separate Modulith modules; share only through common.")
                 .check(classes);
     }
@@ -243,10 +269,10 @@ public class SkillshubArchitectureRulesTest {
     void userModule_mustNotDependOnStorageModule(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..user..")
+                .resideInAPackage(USER_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..storage..")
+                .resideInAPackage(STORAGE_ROOT)
                 .because("User and Storage are separate Modulith modules; share only through common.")
                 .check(classes);
     }
@@ -255,10 +281,10 @@ public class SkillshubArchitectureRulesTest {
     void storageModule_mustNotDependOnCourseModule(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..storage..")
+                .resideInAPackage(STORAGE_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..course..")
+                .resideInAPackage(COURSE_ROOT)
                 .because("Storage and Course are separate Modulith modules; share only through common.")
                 .check(classes);
     }
@@ -267,10 +293,10 @@ public class SkillshubArchitectureRulesTest {
     void storageModule_mustNotDependOnUserModule(JavaClasses classes) {
         noClasses()
                 .that()
-                .resideInAPackage("..storage..")
+                .resideInAPackage(STORAGE_ROOT)
                 .should()
                 .dependOnClassesThat()
-                .resideInAPackage("..user..")
+                .resideInAPackage(USER_ROOT)
                 .because("Storage and User are separate Modulith modules; share only through common.")
                 .check(classes);
     }

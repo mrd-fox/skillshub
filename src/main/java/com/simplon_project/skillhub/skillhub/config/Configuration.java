@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.info.BuildProperties;
@@ -18,7 +19,7 @@ public class Configuration {
 
     private final BuildProperties buildProperties;
 
-    public Configuration(final BuildProperties buildProperties) {
+    public Configuration(@Autowired(required = false) final BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 

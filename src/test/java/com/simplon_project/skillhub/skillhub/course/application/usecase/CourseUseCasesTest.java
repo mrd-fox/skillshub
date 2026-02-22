@@ -3,6 +3,8 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.IsUserEnrolledInCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
@@ -69,6 +71,15 @@ public class CourseUseCasesTest {
     @Mock
     SoftDeleteCoursePort softDeleteCoursePort;
 
+    @Mock
+    private LoadCourseSummariesByIdsPort loadCourseSummariesByIdsPort;
+
+    @Mock
+    private LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
+
+    @Mock
+    private IsUserEnrolledInCoursePort isUserEnrolledInCoursePort;
+
     @InjectMocks
     private CourseUseCases courseUseCases;
 
@@ -82,8 +93,10 @@ public class CourseUseCasesTest {
     public static final CourseStatusEnum COURSE_STATUS_PUBLISHED = CourseStatusEnum.PUBLISHED;
     public static final LocalDateTime CREATED_AT = LocalDateTime.now();
     public static final LocalDateTime UPDATED_AT = LocalDateTime.now();
-    public static final String EXTERNAL_AUTHOR_ID = "author-123";
-    public static final String OTHER_USER_ID = "other-user-456";
+    public static final UUID EXTERNAL_AUTHOR_UUID = UUID.randomUUID();
+    public static final String EXTERNAL_AUTHOR_ID = EXTERNAL_AUTHOR_UUID.toString();
+    public static final UUID OTHER_USER_UUID = UUID.randomUUID();
+    public static final String OTHER_USER_ID = OTHER_USER_UUID.toString();
     public static final String RAW_ROLES_TUTOR = "TUTOR";
     public static final String RAW_ROLES_ADMIN = "ADMIN";
     public static final String RAW_ROLES_STUDENT = "STUDENT";
@@ -723,6 +736,91 @@ public class CourseUseCasesTest {
             // WHEN + THEN
             assertThrows(CourseNotFoundException.class,
                     () -> courseUseCases.getPublicCourseDetail(command));
+        }
+    }
+
+    // ========================================================================
+    // GET STUDENT COURSE TESTS
+    // ========================================================================
+    @Nested
+    @DisplayName("getStudentCourse (get method)")
+    class GetStudentCourse {
+
+        @Test
+        @DisplayName("ADMIN should access any course without enrollment check")
+        void get_asAdmin_shouldReturnCourse() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "ADMIN");
+            var course = buildCourse();
+
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN
+            var result = courseUseCases.get(command);
+
+            // THEN
+            assertNotNull(result);
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+            verify(isUserEnrolledInCoursePort, never()).isEnrolled(any(), any());
+        }
+
+        @Test
+        @DisplayName("STUDENT enrolled should access PUBLISHED course")
+        void get_asEnrolledStudent_shouldReturnCourse() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+            var course = buildCourse().toBuilder().status(CourseStatusEnum.PUBLISHED).build();
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(true);
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN
+            var result = courseUseCases.get(command);
+
+            // THEN
+            assertNotNull(result);
+            assertEquals(CourseStatusEnum.PUBLISHED, result.getStatus());
+            verify(isUserEnrolledInCoursePort).isEnrolled(any(UUID.class), any(UUID.class));
+            verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT not enrolled should throw 403")
+        void get_asNotEnrolledStudent_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(false);
+
+            // WHEN + THEN
+            assertThrows(StudentNotEnrolledException.class, () -> courseUseCases.get(command));
+            verify(isUserEnrolledInCoursePort).isEnrolled(any(UUID.class), any(UUID.class));
+            verify(loadCourseWithVideoPort, never()).loadWithVideo(any(Id.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT accessing DRAFT course should throw 404")
+        void get_asDraftCourse_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "STUDENT");
+            var course = buildCourse().toBuilder().status(CourseStatusEnum.DRAFT).build();
+
+            when(isUserEnrolledInCoursePort.isEnrolled(any(UUID.class), any(UUID.class))).thenReturn(true);
+            when(loadCourseWithVideoPort.loadWithVideo(any(Id.class))).thenReturn(course);
+
+            // WHEN + THEN
+            assertThrows(CourseNotAccessibleException.class, () -> courseUseCases.get(command));
+        }
+
+        @Test
+        @DisplayName("TUTOR without STUDENT role should throw 403")
+        void get_asTutorOnly_shouldThrowException() {
+            // GIVEN
+            var command = GetStudentCourseCommand.of(COURSE_ID_STRING, EXTERNAL_AUTHOR_ID, "TUTOR");
+
+            // WHEN + THEN
+            assertThrows(UnauthorizedCourseAccessException.class, () -> courseUseCases.get(command));
+            verify(isUserEnrolledInCoursePort, never()).isEnrolled(any(), any());
         }
     }
 
@@ -1518,6 +1616,212 @@ public class CourseUseCasesTest {
             verify(loadCourseWithVideoPort).loadWithVideo(any(Id.class));
             verifyNoInteractions(softDeleteCoursePort);
             verifyNoInteractions(enqueueOutboxEventPort);
+        }
+    }
+
+    // ========================================================================
+    // SEARCH COURSES BY IDS TESTS (with enrollment entitlement)
+    // ========================================================================
+    @Nested
+    @DisplayName("searchByIds with enrollment entitlement")
+    class SearchByIds {
+
+        private static final UUID EXTERNAL_USER_ID = UUID.randomUUID();
+        private static final String EXTERNAL_USER_ID_STRING = EXTERNAL_USER_ID.toString();
+
+        @Test
+        @DisplayName("should return only enrolled courses from requested list")
+        void searchByIds_shouldReturnOnlyEnrolledCourses() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+            Id idB = Id.of(UUID.randomUUID().toString());
+            Id idC = Id.of(UUID.randomUUID().toString());
+            Id idD = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString(), idB.asString(), idC.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User is enrolled in B, C, D
+            Set<Id> enrolledIds = Set.of(idB, idC, idD);
+
+            var courseB = CourseSummary.of(
+                    idB,
+                    "Course B",
+                    "Description B",
+                    1000L,
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+
+            var courseC = CourseSummary.of(
+                    idC,
+                    "Course C",
+                    "Description C",
+                    2000L,
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(anyList()))
+                    .thenReturn(List.of(courseB, courseC));
+
+            // WHEN
+            var result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(2);
+            assertThat(result).containsExactlyInAnyOrder(courseB, courseC);
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+
+            ArgumentCaptor<List<Id>> idsCaptor = ArgumentCaptor.forClass(List.class);
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(idsCaptor.capture());
+
+            List<Id> capturedIds = idsCaptor.getValue();
+            assertThat(capturedIds).hasSize(2);
+            assertThat(capturedIds).containsExactlyInAnyOrder(idB, idC);
+
+            verifyNoMoreInteractions(loadEnrolledCourseIdsPort, loadCourseSummariesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should return empty list when user has no enrolled courses")
+        void searchByIds_shouldReturnEmptyListWhenNoEnrolledCourses() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User has no enrollments
+            Set<Id> enrolledIds = Set.of();
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+
+            // WHEN
+            var result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should propagate exception when enrollment port throws RuntimeException")
+        void searchByIds_shouldPropagateExceptionWhenEnrollmentPortFails() {
+            // GIVEN
+            Id idA = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(idA.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            RuntimeException enrollmentException = new RuntimeException("Enrollment service unavailable");
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenThrow(enrollmentException);
+
+            // WHEN + THEN
+            RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+                courseUseCases.searchByIds(command);
+            });
+
+            assertThat(thrown).isEqualTo(enrollmentException);
+            assertThat(thrown.getMessage()).isEqualTo("Enrollment service unavailable");
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should return empty list when requested courses are not in enrolled list")
+        void searchByIds_shouldReturnEmptyListWhenNoIntersection() {
+            // GIVEN
+            Id requestedId1 = Id.of(UUID.randomUUID().toString());
+            Id requestedId2 = Id.of(UUID.randomUUID().toString());
+
+            Id enrolledId1 = Id.of(UUID.randomUUID().toString());
+            Id enrolledId2 = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(requestedId1.asString(), requestedId2.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            // User is enrolled in different courses
+            Set<Id> enrolledIds = Set.of(enrolledId1, enrolledId2);
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+
+            // WHEN
+            var result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verifyNoInteractions(loadCourseSummariesByIdsPort);
+        }
+
+        @Test
+        @DisplayName("should handle single course enrollment correctly")
+        void searchByIds_shouldHandleSingleCourseEnrollment() {
+            // GIVEN
+            Id courseId = Id.of(UUID.randomUUID().toString());
+
+            List<String> rawRequestedIds = List.of(courseId.asString());
+            SearchCoursesByIdsCommand command = SearchCoursesByIdsCommand.of(
+                    rawRequestedIds,
+                    EXTERNAL_USER_ID_STRING
+            );
+
+            Set<Id> enrolledIds = Set.of(courseId);
+
+            var course = CourseSummary.of(
+                    courseId,
+                    "Enrolled Course",
+                    "Description",
+                    5000L,
+                    CourseStatusEnum.PUBLISHED,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+
+            when(loadEnrolledCourseIdsPort.loadEnrolledCourseIds(EXTERNAL_USER_ID))
+                    .thenReturn(enrolledIds);
+            when(loadCourseSummariesByIdsPort.loadSummariesByIds(anyList()))
+                    .thenReturn(List.of(course));
+
+            // WHEN
+            var result = courseUseCases.searchByIds(command);
+
+            // THEN
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0)).isEqualTo(course);
+
+            verify(loadEnrolledCourseIdsPort, times(1)).loadEnrolledCourseIds(EXTERNAL_USER_ID);
+            verify(loadCourseSummariesByIdsPort, times(1)).loadSummariesByIds(anyList());
         }
     }
 }

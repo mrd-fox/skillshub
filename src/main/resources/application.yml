@@ -111,6 +111,13 @@ course:
       dispatcher-fixed-delay-ms: 5000  # Outbox dispatcher polling interval (5 seconds)
       dispatcher-batch-size: 10  # Max events processed per dispatcher iteration
 
+
+
+############################################################
+# 📦 User Service
+############################################################
+user-service:
+  base-url: http://localhost:10020
 ############################################################
 # 📦 MinIO
 ############################################################

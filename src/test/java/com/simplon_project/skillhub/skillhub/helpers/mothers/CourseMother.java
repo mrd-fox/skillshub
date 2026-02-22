@@ -46,6 +46,7 @@ public final class CourseMother {
 
         return CourseBuilder.aCourse()
                 .withExternalUserId(externalUserId)
+                .withPrice(4999L)
                 .withSection(section)
                 .build();
     }

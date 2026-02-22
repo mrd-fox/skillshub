@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.course.adapter.in.web.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.CourseStatusEnum;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
@@ -9,15 +10,31 @@ import java.util.List;
 
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(description = "Complete course details with sections, chapters and videos")
 public record CourseResponse(
+        @Schema(description = "Course unique identifier", example = "9a5a94e5-04b2-47b8-9ef2-4426d1b640b2")
         String id,
-        String title,
-        String description,
-        CourseStatusEnum status,
-        List<SectionResponse> sections,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
 
+        @Schema(description = "Course title", example = "Introduction to Spring Boot")
+        String title,
+
+        @Schema(description = "Course description", example = "Learn Spring Boot fundamentals")
+        String description,
+
+        @Schema(description = "Course price in cents", example = "4999")
+        Long price,
+
+        @Schema(description = "Course publication status", example = "PUBLISHED")
+        CourseStatusEnum status,
+
+        @Schema(description = "List of course sections with chapters and videos")
+        List<SectionResponse> sections,
+
+        @Schema(description = "Course creation timestamp", example = "2026-02-18T10:30:00")
+        LocalDateTime createdAt,
+
+        @Schema(description = "Course last update timestamp", example = "2026-02-18T14:45:00")
+        LocalDateTime updatedAt
 
 ) {
 }

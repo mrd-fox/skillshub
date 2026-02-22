@@ -4,18 +4,13 @@ import com.simplon_project.skillhub.skillhub.course.adapter.common.mapper.CycleA
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.CourseEntity;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.entity.EntityId;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseEntityMapper;
+import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.CourseSummaryEntityMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseEntityDetailMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.mapper.PublicCourseSummaryMapper;
 import com.simplon_project.skillhub.skillhub.course.adapter.out.percistence.repository.JpaCourseRepository;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.CreateNewCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.FindCoursePort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCourseDetailPort;
-import com.simplon_project.skillhub.skillhub.course.application.port.out.course.LoadPublicCoursesPort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseAlreadyExistsException;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
-import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseDetail;
-import com.simplon_project.skillhub.skillhub.course.domain.model.PublicCourseSummary;
+import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -31,7 +26,9 @@ public class CourseAdapter implements
         CreateNewCoursePort,
         FindCoursePort,
         LoadPublicCoursesPort,
-        LoadPublicCourseDetailPort {
+        LoadPublicCourseDetailPort,
+        LoadCoursesByIdsPort,
+        LoadCourseSummariesByIdsPort {
 
 
     private final JpaCourseRepository courseJpaRepository;
@@ -100,4 +97,30 @@ public class CourseAdapter implements
                 .map(PublicCourseEntityDetailMapper::mapToDomain);
     }
 
+    // =========================
+    // BATCH SEARCH
+    // =========================
+
+    @Override
+    public List<Course> loadCoursesByIds(List<Id> courseIds) {
+
+        var uuids = courseIds.stream()
+                .map(Id::asUUID)
+                .toList();
+
+        var entities = courseJpaRepository.findAllByIdIn(uuids);
+
+        return CourseEntityMapper.mapToDomain(entities, new CycleAvoidingMappingContext());
+    }
+
+    @Override
+    public List<CourseSummary> loadSummariesByIds(List<Id> courseIds) {
+        var uuids = courseIds.stream()
+                .map(Id::asUUID)
+                .toList();
+
+        var entities = courseJpaRepository.findAllByIdIn(uuids);
+
+        return CourseSummaryEntityMapper.mapToDomains(entities);
+    }
 }

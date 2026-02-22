@@ -39,3 +39,7 @@ build/
 /envs
 
 tmp/
+
+doc/*
+logs/
+tech-doc/

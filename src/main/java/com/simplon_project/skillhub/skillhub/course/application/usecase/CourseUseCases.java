@@ -3,16 +3,17 @@ package com.simplon_project.skillhub.skillhub.course.application.usecase;
 import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.application.exception.CourseNotFoundException;
 import com.simplon_project.skillhub.skillhub.course.application.port.in.*;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.DeleteCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateChapterCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateCourseCommand;
-import com.simplon_project.skillhub.skillhub.course.application.port.in.command.UpdateSectionCommand;
+import com.simplon_project.skillhub.skillhub.course.application.port.in.command.*;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.IsUserEnrolledInCoursePort;
+import com.simplon_project.skillhub.skillhub.course.application.port.out.LoadEnrolledCourseIdsPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.course.*;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.outbox.EnqueueOutboxEventPort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.ExistsInFlightVideoForCoursePort;
 import com.simplon_project.skillhub.skillhub.course.application.port.out.video.UploadMediaPort;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.*;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseNotAccessibleException;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.CourseStructureLockedException;
+import com.simplon_project.skillhub.skillhub.course.domain.exception.StudentNotEnrolledException;
 import com.simplon_project.skillhub.skillhub.course.domain.exception.UnauthorizedCourseAccessException;
 import com.simplon_project.skillhub.skillhub.course.domain.model.*;
 import com.simplon_project.skillhub.skillhub.course.domain.policy.CourseAccessPolicy;
@@ -23,10 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,10 +51,12 @@ public class CourseUseCases implements
         UpdateCoursePort,
         UploadMediaPort,
         GetCoursePort,
+        GetStudentCoursePort,
         ListPublicCoursesPort,
         GetPublicCourseDetailPort,
         PublishCoursePort,
-        DeleteCoursePort {
+        DeleteCoursePort,
+        SearchCoursesByIdsPort {
 
     private final CreateNewCoursePort createNewCoursePort;
     private final UpdateCourseStructurePort updateCourseStructurePort;
@@ -71,6 +71,10 @@ public class CourseUseCases implements
     private final EnqueueOutboxEventPort enqueueOutboxEventPort;
     private final ExistsInFlightVideoForCoursePort existsInFlightVideoForCoursePort;
     private final SoftDeleteCoursePort softDeleteCoursePort;
+    private final LoadCoursesByIdsPort loadCoursesByIdsPort;
+    private final LoadCourseSummariesByIdsPort loadCourseSummariesByIdsPort;
+    private final LoadEnrolledCourseIdsPort loadEnrolledCourseIdsPort;
+    private final IsUserEnrolledInCoursePort isUserEnrolledInCoursePort;
 
     @Transactional("courseTxManager")
     @Override
@@ -132,12 +136,12 @@ public class CourseUseCases implements
     }
 
     @Override
-    public List<Course> getCourses(com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCoursesCommand command) {
+    public List<Course> getCourses(GetCoursesCommand command) {
         return findCoursePort.findByExternalUserId(command.externalAuthorId());
     }
 
     @Override
-    public Course getCourse(com.simplon_project.skillhub.skillhub.course.application.port.in.command.GetCourseCommand command) {
+    public Course getCourse(GetCourseCommand command) {
         var courseId = Id.of(command.courseId());
         var externalUserId = command.externalAuthorId();
         var roles = command.userRoles();
@@ -169,6 +173,42 @@ public class CourseUseCases implements
         }
 
         return loadCourseWithVideoPort.loadWithVideo(courseId);
+    }
+
+    @Override
+    @Transactional(value = "courseTxManager", readOnly = true)
+    public Course get(GetStudentCourseCommand command) {
+        var roles = command.userRoles();
+
+        // Only ADMIN or STUDENT can access
+        if (!roles.contains(UserRole.ADMIN) && !roles.contains(UserRole.STUDENT)) {
+            throw new UnauthorizedCourseAccessException("Access restricted to ADMIN or STUDENT roles");
+        }
+
+        var courseId = UUID.fromString(command.courseId());
+        var domainCourseId = Id.of(command.courseId());
+
+        // ADMIN: full access to any course
+        if (roles.contains(UserRole.ADMIN)) {
+            return loadCourseWithVideoPort.loadWithVideo(domainCourseId);
+        }
+
+        // STUDENT: verify enrollment
+        var externalUserId = UUID.fromString(command.externalUserId());
+        var isEnrolled = isUserEnrolledInCoursePort.isEnrolled(externalUserId, courseId);
+
+        if (!isEnrolled) {
+            throw new StudentNotEnrolledException(command.courseId());
+        }
+
+        var course = loadCourseWithVideoPort.loadWithVideo(domainCourseId);
+
+        // Students can only access PUBLISHED courses
+        if (course.getStatus() != CourseStatusEnum.PUBLISHED) {
+            throw new CourseNotAccessibleException(command.courseId());
+        }
+
+        return course;
     }
 
     @Override
@@ -237,6 +277,27 @@ public class CourseUseCases implements
 
         softDeleteCoursePort.softDelete(existing, now);
     }
+
+
+    @Override
+    @Transactional(readOnly = true, transactionManager = "courseTxManager")
+    public List<CourseSummary> searchByIds(SearchCoursesByIdsCommand command) {
+        // Load enrolled course IDs for the user (fail-closed: exceptions propagate)
+        var enrolledIds = loadEnrolledCourseIdsPort.loadEnrolledCourseIds(command.externalUserId());
+
+        // Compute intersection: only return courses the user is enrolled in
+        var requestedIds = new HashSet<>(command.courseIds());
+        requestedIds.retainAll(enrolledIds);
+
+        // If no enrolled courses in the requested list, return empty
+        if (requestedIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Load lightweight summaries (no sections/chapters/videos) for student dashboard
+        return loadCourseSummariesByIdsPort.loadSummariesByIds(new ArrayList<>(requestedIds));
+    }
+
 
     // ========================================================================
     // STRUCTURE LOCK ENFORCEMENT
@@ -473,4 +534,6 @@ public class CourseUseCases implements
         }
         return section.getChapters();
     }
+
+
 }

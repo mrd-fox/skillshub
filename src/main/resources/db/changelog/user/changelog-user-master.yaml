@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/user/1.1.x/1.0.0_init-user-database.yaml
   - include:
       file: db/changelog/user/1.1.x/1.0.0_remove_constraint_user.yaml
+  - include:
+      file: db/changelog/user/1.1.x/1.0.1_create-user-course-table.yaml
