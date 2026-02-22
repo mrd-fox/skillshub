@@ -8,6 +8,7 @@ import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CourseSearchController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("CourseSearchController - Lightweight Search Tests")
 class CourseSearchControllerTest {
 
@@ -65,7 +67,7 @@ class CourseSearchControllerTest {
 
         var requestBody = """
                 {
-                    "courseIds": ["%s", "%s"]
+                    "ids": ["%s", "%s"]
                 }
                 """.formatted(courseId1, courseId2);
 
@@ -80,12 +82,14 @@ class CourseSearchControllerTest {
                 .andExpect(jsonPath("$[0].id").value(courseId1))
                 .andExpect(jsonPath("$[0].title").value("Spring Boot Course"))
                 .andExpect(jsonPath("$[0].description").value("Learn Spring Boot"))
+                .andExpect(jsonPath("$[0].price").value(4999))
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"))
                 .andExpect(jsonPath("$[0].createdAt").exists())
                 .andExpect(jsonPath("$[0].updatedAt").exists())
                 .andExpect(jsonPath("$[0].sections").doesNotExist())
                 .andExpect(jsonPath("$[1].id").value(courseId2))
-                .andExpect(jsonPath("$[1].title").value("Java Course"));
+                .andExpect(jsonPath("$[1].title").value("Java Course"))
+                .andExpect(jsonPath("$[1].price").value(2999));
     }
 
     @Test
@@ -100,7 +104,7 @@ class CourseSearchControllerTest {
 
         var requestBody = """
                 {
-                    "courseIds": ["%s"]
+                    "ids": ["%s"]
                 }
                 """.formatted(courseId);
 

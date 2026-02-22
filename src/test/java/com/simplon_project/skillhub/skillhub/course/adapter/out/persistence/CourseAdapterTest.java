@@ -116,8 +116,10 @@ public class CourseAdapterTest {
             assertThat(result).hasSize(2);
             assertThat(result.get(0).getId().asString()).isEqualTo(uuid1.toString());
             assertThat(result.get(0).getTitle()).isEqualTo("Course 1");
+            assertThat(result.get(0).getPrice()).isEqualTo(100L);
             assertThat(result.get(1).getId().asString()).isEqualTo(uuid2.toString());
             assertThat(result.get(1).getTitle()).isEqualTo("Course 2");
+            assertThat(result.get(1).getPrice()).isEqualTo(200L);
 
             ArgumentCaptor<List<UUID>> uuidsCaptor = ArgumentCaptor.forClass(List.class);
             verify(courseJpaRepository, times(1)).findAllByIdIn(uuidsCaptor.capture());

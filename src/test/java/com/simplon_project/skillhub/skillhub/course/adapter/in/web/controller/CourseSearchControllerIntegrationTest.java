@@ -103,8 +103,10 @@ class CourseSearchControllerIntegrationTest extends DatabaseTestConfig {
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[0].id").exists())
                     .andExpect(jsonPath("$[0].title").exists())
+                    .andExpect(jsonPath("$[0].price").exists())
                     .andExpect(jsonPath("$[1].id").exists())
-                    .andExpect(jsonPath("$[1].title").exists());
+                    .andExpect(jsonPath("$[1].title").exists())
+                    .andExpect(jsonPath("$[1].price").exists());
         }
 
         @Test
@@ -179,6 +181,7 @@ class CourseSearchControllerIntegrationTest extends DatabaseTestConfig {
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$", hasSize(1)))
                     .andExpect(jsonPath("$[0].id").value(courseId1.toString()))
+                    .andExpect(jsonPath("$[0].price").value(100))
                     .andReturn()
                     .getResponse()
                     .getContentAsString();
@@ -216,6 +219,7 @@ class CourseSearchControllerIntegrationTest extends DatabaseTestConfig {
                     .andExpect(jsonPath("$[0].id").value(courseId1.toString()))
                     .andExpect(jsonPath("$[0].title").value("Integration Test Course 1"))
                     .andExpect(jsonPath("$[0].description").value("First test course"))
+                    .andExpect(jsonPath("$[0].price").value(100))
                     .andExpect(jsonPath("$[0].status").value("PUBLISHED"))
                     .andExpect(jsonPath("$[0].createdAt").exists())
                     .andExpect(jsonPath("$[0].updatedAt").exists());

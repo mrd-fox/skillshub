@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.course.adapter.in.web.advice;
 
 import feign.FeignException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,10 @@ import java.util.concurrent.CompletionException;
 @ControllerAdvice
 public class ExceptionCourseHandler implements ProblemHandling, AdviceTrait {
     private static final String SOURCE_KEY = "sources";
+    private static final String DEFAULT_SERVICE_NAME = "course-service";
     private final BuildProperties buildProperties;
 
-    public ExceptionCourseHandler(BuildProperties buildProperties) {
+    public ExceptionCourseHandler(@Autowired(required = false) BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
@@ -50,8 +52,9 @@ public class ExceptionCourseHandler implements ProblemHandling, AdviceTrait {
     }
 
     private String getSourcesParameter(Throwable throwable) {
-        return getExistingSources(throwable).map(existingSource -> buildProperties.getName() + " -> " + existingSource)
-                .orElse(buildProperties.getName());
+        String serviceName = buildProperties != null ? buildProperties.getName() : DEFAULT_SERVICE_NAME;
+        return getExistingSources(throwable).map(existingSource -> serviceName + " -> " + existingSource)
+                .orElse(serviceName);
     }
 
     private Optional<String> getExistingSources(Throwable throwable) {

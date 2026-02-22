@@ -3,6 +3,7 @@ package com.simplon_project.skillhub.skillhub.user.exception;
 
 import com.simplon_project.skillhub.skillhub.user.domain.exception.DomainException;
 import feign.FeignException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -29,9 +30,10 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
     private static final String SOURCE_KEY = "sources";
     private static final String ERROR_MESSAGE = "errorMessage";
     private static final String ERROR_CODE = "errorCode";
+    private static final String DEFAULT_SERVICE_NAME = "user-service";
     private final BuildProperties buildProperties;
 
-    public ExceptionUserHandler(BuildProperties buildProperties) {
+    public ExceptionUserHandler(@Autowired(required = false) BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
@@ -60,8 +62,9 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
     }
 
     private String getSourcesParameter(Throwable throwable) {
-        return getExistingSources(throwable).map(existingSource -> buildProperties.getName() + " -> " + existingSource)
-                .orElse(buildProperties.getName());
+        String serviceName = buildProperties != null ? buildProperties.getName() : DEFAULT_SERVICE_NAME;
+        return getExistingSources(throwable).map(existingSource -> serviceName + " -> " + existingSource)
+                .orElse(serviceName);
     }
 
     private Optional<String> getExistingSources(Throwable throwable) {
@@ -121,13 +124,14 @@ public class ExceptionUserHandler implements ProblemHandling, AdviceTrait {
             DomainException ex,
             NativeWebRequest request) {
 
+        String serviceName = buildProperties != null ? buildProperties.getName() : DEFAULT_SERVICE_NAME;
         Problem problem = Problem.builder()
                 .withStatus(ex.getStatus())
                 .withTitle(ex.getStatus().getReasonPhrase())
                 .withDetail(ex.getMessage())
                 .with(ERROR_CODE, ex.getClass().getSimpleName())
                 .with(ERROR_MESSAGE, ex.getMessage())
-                .with(SOURCE_KEY, buildProperties.getName())
+                .with(SOURCE_KEY, serviceName)
                 .build();
 
         return create(ex, problem, request);

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(StudentCourseController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("StudentCourseController Integration Tests")
 class StudentCourseControllerTest {
 
@@ -46,6 +48,7 @@ class StudentCourseControllerTest {
                 .id(Id.of(COURSE_ID))
                 .title(COURSE_TITLE)
                 .description("Test Description")
+                .price(4999L)
                 .status(CourseStatusEnum.PUBLISHED)
                 .externalUserId("author-123")
                 .createdAt(LocalDateTime.now())
@@ -73,6 +76,7 @@ class StudentCourseControllerTest {
                     .andExpect(content().contentType("application/json"))
                     .andExpect(jsonPath("$.id").value(COURSE_ID))
                     .andExpect(jsonPath("$.title").value(COURSE_TITLE))
+                    .andExpect(jsonPath("$.price").value(4999))
                     .andExpect(jsonPath("$.status").value("PUBLISHED"));
 
             verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
@@ -144,7 +148,7 @@ class StudentCourseControllerTest {
         @Test
         @DisplayName("Should return 401 when user context is invalid in command")
         void shouldReturn401WhenContextInvalid() throws Exception {
-            // GIVEN
+            // GIVEN - Mock is not used because validation fails in GetStudentCourseCommand.of()
             when(getStudentCoursePort.get(any(GetStudentCourseCommand.class)))
                     .thenThrow(new MissingUserContextException("Invalid user context"));
 
@@ -154,9 +158,10 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "STUDENT"))
                     .andExpect(status().isUnauthorized())
                     .andExpect(content().contentType("application/problem+json"))
-                    .andExpect(jsonPath("$.title").value("Unauthorized"));
+                    .andExpect(jsonPath("$.title").value("missing-user-context"));
 
-            verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
+            // Port is never called because validation happens in command creation
+            verify(getStudentCoursePort, never()).get(any());
         }
     }
 
@@ -177,7 +182,7 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "STUDENT"))
                     .andExpect(status().isForbidden())
                     .andExpect(content().contentType("application/problem+json"))
-                    .andExpect(jsonPath("$.title").value("Forbidden"))
+                    .andExpect(jsonPath("$.title").value("student-not-enrolled"))
                     .andExpect(jsonPath("$.detail", containsString("enrolled")));
 
             verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
@@ -196,7 +201,7 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "ADMIN"))
                     .andExpect(status().isForbidden())
                     .andExpect(content().contentType("application/problem+json"))
-                    .andExpect(jsonPath("$.title").value("Forbidden"));
+                    .andExpect(jsonPath("$.title").value("unauthorized-course-access"));
 
             verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
         }
@@ -219,7 +224,7 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "STUDENT"))
                     .andExpect(status().isNotFound())
                     .andExpect(content().contentType("application/problem+json"))
-                    .andExpect(jsonPath("$.title").value("Not Found"));
+                    .andExpect(jsonPath("$.title").value("course-not-found"));
 
             verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
         }
@@ -237,7 +242,7 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "STUDENT"))
                     .andExpect(status().isNotFound())
                     .andExpect(content().contentType("application/problem+json"))
-                    .andExpect(jsonPath("$.title").value("Not Found"));
+                    .andExpect(jsonPath("$.title").value("course-not-accessible"));
 
             verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
         }
@@ -256,7 +261,8 @@ class StudentCourseControllerTest {
                             .header("X-User-Roles", "STUDENT"))
                     .andExpect(status().isBadRequest());
 
-            verify(getStudentCoursePort).get(any(GetStudentCourseCommand.class));
+            // Port should not be called since validation happens before
+            verify(getStudentCoursePort, never()).get(any());
         }
     }
 }

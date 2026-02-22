@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * SH-166: Tests to guarantee soft-deleted entities are NEVER returned.
+ * Tests to guarantee soft-deleted entities are NEVER returned.
  * <p>
  * IMPORTANT:
  * These tests MUST FAIL if soft-delete filtering is accidentally removed.
@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.liquibase.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
-@DisplayName("SH-166: Soft Delete Safety Tests")
+@DisplayName("Soft Delete Safety Tests")
 public class SoftDeleteSafetyTest {
 
     @Autowired
