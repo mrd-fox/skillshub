@@ -21,6 +21,9 @@ public record CourseResponse(
         @Schema(description = "Course description", example = "Learn Spring Boot fundamentals")
         String description,
 
+        @Schema(description = "Course price in cents", example = "4999")
+        Long price,
+
         @Schema(description = "Course publication status", example = "PUBLISHED")
         CourseStatusEnum status,
 

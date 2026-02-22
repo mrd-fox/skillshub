@@ -27,6 +27,7 @@ class CourseSummaryEntityMapperTest {
                 .courseId(entityId)
                 .title("Spring Boot Course")
                 .description("Learn Spring Boot fundamentals")
+                .price(4999L)
                 .status(CourseStatusEnum.PUBLISHED)
                 .externalUserId("tutor-123")
                 .createdAt(createdAt)
@@ -41,6 +42,7 @@ class CourseSummaryEntityMapperTest {
         assertThat(summary.getCourseId().asString()).isEqualTo(entityId.value().toString());
         assertThat(summary.getTitle()).isEqualTo("Spring Boot Course");
         assertThat(summary.getDescription()).isEqualTo("Learn Spring Boot fundamentals");
+        assertThat(summary.getPrice()).isEqualTo(4999L);
         assertThat(summary.getStatus()).isEqualTo(CourseStatusEnum.PUBLISHED);
         assertThat(summary.getCreatedAt()).isNotNull();
         assertThat(summary.getUpdatedAt()).isNotNull();
@@ -54,6 +56,7 @@ class CourseSummaryEntityMapperTest {
                 .courseId(EntityId.of(UUID.randomUUID()))
                 .title("Course 1")
                 .description("Description 1")
+                .price(1999L)
                 .status(CourseStatusEnum.PUBLISHED)
                 .externalUserId("tutor-1")
                 .createdAt(Instant.now())
@@ -64,6 +67,7 @@ class CourseSummaryEntityMapperTest {
                 .courseId(EntityId.of(UUID.randomUUID()))
                 .title("Course 2")
                 .description("Description 2")
+                .price(2999L)
                 .status(CourseStatusEnum.DRAFT)
                 .externalUserId("tutor-2")
                 .createdAt(Instant.now())
@@ -111,6 +115,7 @@ class CourseSummaryEntityMapperTest {
                 .courseId(EntityId.of(UUID.randomUUID()))
                 .title("Course with sections")
                 .description("Description")
+                .price(3999L)
                 .status(CourseStatusEnum.PUBLISHED)
                 .externalUserId("tutor-123")
                 .createdAt(Instant.now())

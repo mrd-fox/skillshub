@@ -17,6 +17,7 @@ public final class CourseSummary {
     private final Id courseId;
     private final String title;
     private final String description;
+    private final Long price;
     private final CourseStatusEnum status;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;

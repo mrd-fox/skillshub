@@ -21,6 +21,7 @@ public class CourseSummaryEntityMapper {
                 Id.of(entity.getId().value().toString()),
                 entity.getTitle(),
                 entity.getDescription(),
+                entity.getPrice(),
                 entity.getStatus(),
                 DateTimeHelper.toLocalDateTime(entity.getCreatedAt()),
                 DateTimeHelper.toLocalDateTime(entity.getUpdatedAt())

@@ -61,6 +61,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid1),
                     "Course 1",
                     "Description 1",
+                    1999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -70,6 +71,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid2),
                     "Course 2",
                     "Description 2",
+                    2999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -141,6 +143,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid1),
                     "Course 1",
                     "Description",
+                    3499L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -174,6 +177,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid),
                     "Course",
                     "Description",
+                    4999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -214,6 +218,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid3),
                     "Third",
                     "Description 3",
+                    9999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -222,6 +227,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid1),
                     "First",
                     "Description 1",
+                    5999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -230,6 +236,7 @@ class SearchCoursesByIdsUseCaseTest {
                     Id.of(uuid2),
                     "Second",
                     "Description 2",
+                    7999L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()

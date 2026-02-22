@@ -1651,6 +1651,7 @@ public class CourseUseCasesTest {
                     idB,
                     "Course B",
                     "Description B",
+                    1000L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -1660,6 +1661,7 @@ public class CourseUseCasesTest {
                     idC,
                     "Course C",
                     "Description C",
+                    2000L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()
@@ -1799,6 +1801,7 @@ public class CourseUseCasesTest {
                     courseId,
                     "Enrolled Course",
                     "Description",
+                    5000L,
                     CourseStatusEnum.PUBLISHED,
                     LocalDateTime.now(),
                     LocalDateTime.now()

@@ -44,6 +44,7 @@ class CourseSearchControllerTest {
                 Id.of(courseId1),
                 "Spring Boot Course",
                 "Learn Spring Boot",
+                4999L,
                 CourseStatusEnum.PUBLISHED,
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -53,6 +54,7 @@ class CourseSearchControllerTest {
                 Id.of(courseId2),
                 "Java Course",
                 "Learn Java",
+                2999L,
                 CourseStatusEnum.PUBLISHED,
                 LocalDateTime.now(),
                 LocalDateTime.now()

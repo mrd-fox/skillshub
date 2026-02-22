@@ -23,6 +23,7 @@ public class CourseEntityMapper {
                 .status(entity.getStatus())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
+                .price(entity.getPrice())
                 .createdAt(DateTimeHelper.toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(DateTimeHelper.toLocalDateTime(entity.getUpdatedAt()))
                 .externalUserId(entity.getExternalUserId())

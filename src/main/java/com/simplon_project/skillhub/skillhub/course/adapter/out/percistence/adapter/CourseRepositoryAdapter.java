@@ -82,6 +82,7 @@ public class CourseRepositoryAdapter implements
 
         managedCourseEntity.setTitle(courseDomain.getTitle());
         managedCourseEntity.setDescription(courseDomain.getDescription());
+        managedCourseEntity.setPrice(courseDomain.getPrice());
         managedCourseEntity.setStatus(courseDomain.getStatus());
 
         // Soft delete sync for course itself (CRITICAL for deleteCourse)
