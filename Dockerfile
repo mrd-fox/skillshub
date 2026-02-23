@@ -2,17 +2,20 @@
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-# Copie du code source
+# Copy source
 COPY . .
 
-# Build du projet (skip tests pour accélérer)
+# Ensure Maven Wrapper is executable in Linux (GitHub Actions runner)
+RUN chmod +x mvnw
+
+# Build project (skip tests for faster image build; tests run in CI job already)
 RUN ./mvnw clean package -DskipTests
 
 # ---------- Runtime Stage ----------
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
-# Copie du jar généré
+# Copy generated jar
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8081
