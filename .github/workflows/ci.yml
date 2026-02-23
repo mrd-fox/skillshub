@@ -2,9 +2,14 @@ name: Skillshub CI
 
 on:
   push:
-    branches: [ "dev", "master" ]
+    branches: [ "dev", "main" ]
   pull_request:
-    branches: [ "dev", "master" ]
+    branches: [ "dev", "main" ]
+
+# Required for GHCR push with GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   # ========== BUILD (no tests) ==========#
@@ -128,25 +133,25 @@ jobs:
           --password="root"
           rollback-count 1
 
-      - name: Liquibase update (storage)
-        run: >
-          liquibase
-          --classpath=src/main/resources
-          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
-          --url="jdbc:postgresql://localhost:5432/liquibase_test"
-          --username="root"
-          --password="root"
-          update
-
-      - name: Liquibase rollback (storage)
-        run: >
-          liquibase
-          --classpath=src/main/resources
-          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
-          --url="jdbc:postgresql://localhost:5432/liquibase_test"
-          --username="root"
-          --password="root"
-          rollback-count 1
+      #      - name: Liquibase update (storage)
+      #        run: >
+      #          liquibase
+      #          --classpath=src/main/resources
+      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+      #          --username="root"
+      #          --password="root"
+      #          update
+      #
+      #      - name: Liquibase rollback (storage)
+      #        run: >
+      #          liquibase
+      #          --classpath=src/main/resources
+      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+      #          --username="root"
+      #          --password="root"
+      #          rollback-count 1
 
       - name: Liquibase update (user)
         run: >
@@ -217,3 +222,46 @@ jobs:
           -Dsonar.tests=src/test/java
           -Dsonar.coverage.exclusions=src/test/java/**,**/*Test.java,**/*Tests.java,**/*IT.java
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+
+  # ========== DOCKER BUILD & PUSH (GHCR) ==========#
+  docker_build_push:
+    name: Docker Build & Push (GHCR)
+    runs-on: ubuntu-latest
+    needs: [ tests, liquibase ]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/mrd-fox/skillshub
+          tags: |
+            type=raw,value=latest
+            type=raw,value=sha-${{ github.sha }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+# NEXT STEP (Plan):
+# - Add docker-compose.prod.yml pulling ghcr.io/mrd-fox/skillshub:latest
+# - Add Hetzner runbook (pull/up/rollback) + optional GHCR token if package is private

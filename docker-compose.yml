@@ -1,8 +1,8 @@
 volumes:
   postgres-course-data:
-  postgres-storage-data:
+  #  postgres-storage-data:
   postgres-user-data:
-  minio-data:
+  #  minio-data:
   rabbitmq-data:
   prometheus-data:
   grafana-data:
@@ -13,83 +13,80 @@ networks:
   skillshub-net:
     external: true
 
-
-
 services:
   postgres-course:
     restart: unless-stopped
     image: postgres:15
     container_name: postgres-course
     environment:
-      POSTGRES_DB: course_service
-      #TODO modify credentials
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ${POSTGRES_COURSE_DB:-course_service}
+      POSTGRES_USER: ${POSTGRES_COURSE_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_COURSE_PASSWORD:-root}
     ports:
       - "5433:5432"
     volumes:
       - postgres-course-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root -d course_service" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_COURSE_USER:-root} -d ${POSTGRES_COURSE_DB:-course_service}" ]
       interval: 3s
       retries: 10
     networks:
       - skillshub-net
 
-  postgres-storage:
-    restart: unless-stopped
-    image: postgres:15
-    container_name: postgres-storage
-    environment:
-      POSTGRES_DB: storage_service
-      #todo modify credentials
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres-storage-data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root -d storage_service" ]
-      interval: 3s
-      retries: 10
-    networks:
-      - skillshub-net
+  #  postgres-storage:
+  #    restart: unless-stopped
+  #    image: postgres:15
+  #    container_name: postgres-storage
+  #    environment:
+  #      POSTGRES_DB: storage_service
+  #      #todo modify credentials
+  #      POSTGRES_USER: root
+  #      POSTGRES_PASSWORD: root
+  #    ports:
+  #      - "5434:5432"
+  #    volumes:
+  #      - postgres-storage-data:/var/lib/postgresql/data
+  #    healthcheck:
+  #      test: [ "CMD-SHELL", "pg_isready -U root -d storage_service" ]
+  #      interval: 3s
+  #      retries: 10
+  #    networks:
+  #      - skillshub-net
 
   postgres-user:
     restart: unless-stopped
     image: postgres:15
     container_name: postgres-user
     environment:
-      POSTGRES_DB: user_service
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ${POSTGRES_USER_DB:-user_service}
+      POSTGRES_USER: ${POSTGRES_USER_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_USER_PASSWORD:-root}
     ports:
       - "5435:5432"
     volumes:
       - postgres-user-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root -d user_service" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER_USER:-root} -d ${POSTGRES_USER_DB:-user_service}" ]
       interval: 3s
       retries: 10
     networks:
       - skillshub-net
 
-  minio:
-    restart: unless-stopped
-    image: minio/minio:latest
-    container_name: minio
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    ports:
-      - "9000:9000" # API S3
-      - "9001:9001" # console web
-    volumes:
-      - minio-data:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - skillshub-net
+  #  minio:
+  #    restart: unless-stopped
+  #    image: minio/minio:latest
+  #    container_name: minio
+  #    environment:
+  #      MINIO_ROOT_USER: minioadmin
+  #      MINIO_ROOT_PASSWORD: minioadmin123
+  #    ports:
+  #      - "9000:9000" # API S3
+  #      - "9001:9001" # console web
+  #    volumes:
+  #      - minio-data:/data
+  #    command: server /data --console-address ":9001"
+  #    networks:
+  #      - skillshub-net
 
   rabbitmq:
     restart: unless-stopped
@@ -100,8 +97,8 @@ services:
       - "5672:5672"   # AMQP
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -122,9 +119,10 @@ services:
       - '--storage.tsdb.path=/prometheus'
     depends_on:
       - postgres-course
-      - postgres-storage
+      - postgres-user
+      #      - postgres-storage
       - rabbitmq
-      - minio
+    #      - minio
     networks:
       - skillshub-net
 
@@ -135,8 +133,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
@@ -175,14 +173,14 @@ services:
     networks:
       - skillshub-net
 
-  backend-service:
-    build: .
-    container_name: backend-service
-    restart: unless-stopped
-    ports:
-      - "10020:10020"
-    env_file:
-      - ${ENV_FILE:-./envs/dev.env}
+    #  backend-service:
+    #    build: .
+    #    container_name: backend-service
+    #    restart: unless-stopped
+    #    ports:
+    #      - "10020:10020"
+    #    env_file:
+    #      - ${ENV_FILE:-./envs/dev.env}
     #    environment:
     #      # Active le profil Docker
     #      SPRING_PROFILES_ACTIVE: usage_message,docker
@@ -203,22 +201,17 @@ services:
     #      RABBITMQ_USER: admin
     #      RABBITMQ_PASS: admin
     #
-    #      # MinIO
-    #      MINIO_URL: http://minio:9000
-    #      MINIO_ACCESS_KEY: minioadmin
-    #      MINIO_SECRET_KEY: minioadmin123
-    #
     #      # Monitoring
     #      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: prometheus,health,info
-    depends_on:
-      - postgres-course
-      - postgres-storage
-      - rabbitmq
-      - minio
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - skillshub-net
+#    depends_on:
+#      - postgres-course
+#      - postgres-user
+#      - rabbitmq
+#    #      - minio
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
+#    networks:
+#      - skillshub-net
 
 
 
