@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-160-001-drop-fk-course-author
+      author: Marina DARDE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: courses
+            constraintName: fk_course_author
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: courses
+            baseColumnNames: author_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_course_author
+
+  - changeSet:
+      id: SH-160-002-rename-author-id-to-external-user-id
+      author: Marina DARDE
+      changes:
+        - renameColumn:
+            tableName: courses
+            oldColumnName: author_id
+            newColumnName: external_user_id
+            columnDataType: UUID
+        - modifyDataType:
+            tableName: courses
+            columnName: external_user_id
+            newDataType: VARCHAR(255)
+      rollback:
+        # Best-effort: will fail if external_user_id values are not UUID-castable
+        - modifyDataType:
+            tableName: courses
+            columnName: external_user_id
+            newDataType: UUID
+        - renameColumn:
+            tableName: courses
+            oldColumnName: external_user_id
+            newColumnName: author_id
+            columnDataType: UUID
+
+  - changeSet:
+      id: SH-160-003-drop-users-table
+      author: Marina DARDE
+      changes:
+        - dropTable:
+            tableName: users
+      rollback:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+                    nullable: false

@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-129-add-created-updated-defaults
+      author: you
+      changes:
+        - addDefaultValue:
+            tableName: chapters
+            columnName: created_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: chapters
+            columnName: updated_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: sections
+            columnName: created_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: sections
+            columnName: updated_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: videos
+            columnName: created_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+        - addDefaultValue:
+            tableName: videos
+            columnName: updated_at
+            defaultValueComputed: CURRENT_TIMESTAMP
+
+      rollback:
+        - dropDefaultValue:
+            tableName: videos
+            columnName: updated_at
+        - dropDefaultValue:
+            tableName: videos
+            columnName: created_at
+        - dropDefaultValue:
+            tableName: sections
+            columnName: updated_at
+        - dropDefaultValue:
+            tableName: sections
+            columnName: created_at
+        - dropDefaultValue:
+            tableName: chapters
+            columnName: updated_at
+        - dropDefaultValue:
+            tableName: chapters
+            columnName: created_at

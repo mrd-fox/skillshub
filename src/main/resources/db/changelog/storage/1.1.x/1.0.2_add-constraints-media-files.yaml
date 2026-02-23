@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-126_add-constraints-media-files
+      author: Marina DARDE
+      labels: storage,media
+      context: storage
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: media_files
+      changes:
+        - addNotNullConstraint:
+            tableName: media_files
+            columnName: filename
+            columnDataType: varchar(200)
+        - addNotNullConstraint:
+            tableName: media_files
+            columnName: storage_path
+            columnDataType: varchar(512)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: media_files
+            columnName: storage_path
+            columnDataType: varchar(512)
+        - dropNotNullConstraint:
+            tableName: media_files
+            columnName: filename
+            columnDataType: varchar(200)

@@ -1,0 +1,267 @@
+name: Skillshub CI
+
+on:
+  push:
+    branches: [ "dev", "main" ]
+  pull_request:
+    branches: [ "dev", "main" ]
+
+# Required for GHCR push with GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ========== BUILD (no tests) ==========#
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build project
+        run: mvn -B clean package -DskipTests
+
+  # ========== TESTS (unit + integration with Testcontainers) ==========#
+  tests:
+    name: Tests + JaCoCo (Unit + IT)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run tests (disable Rabbit listeners for CI)
+        run: >
+          mvn -B clean verify -Psonar
+          -Dspring.profiles.active=test
+          -Dcourse.rabbitmq.video-polling.enabled=false
+          -Dspring.rabbitmq.listener.simple.auto-startup=false
+          -Dspring.rabbitmq.listener.direct.auto-startup=false
+
+      - name: Upload JaCoCo report (for Sonar job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco
+          path: target/site/jacoco/jacoco.xml
+
+  # ========== LIQUIBASE ==========#
+  liquibase:
+    name: Liquibase Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: liquibase_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Liquibase
+        run: |
+          curl -sLo liquibase.zip https://github.com/liquibase/liquibase/releases/download/v4.27.0/liquibase-4.27.0.zip
+          unzip liquibase.zip -d liquibase
+          sudo mv liquibase /opt/liquibase
+          sudo ln -s /opt/liquibase/liquibase /usr/local/bin/liquibase
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            echo "PostgreSQL not ready yet..."
+            sleep 2
+          done
+
+      - name: Liquibase update (course)
+        run: >
+          liquibase
+          --classpath=src/main/resources
+          --changelog-file=db/changelog/course/changelog-course-master.yaml
+          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+          --username="root"
+          --password="root"
+          update
+
+      - name: Liquibase rollback (course)
+        run: >
+          liquibase
+          --classpath=src/main/resources
+          --changelog-file=db/changelog/course/changelog-course-master.yaml
+          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+          --username="root"
+          --password="root"
+          rollback-count 1
+
+      #      - name: Liquibase update (storage)
+      #        run: >
+      #          liquibase
+      #          --classpath=src/main/resources
+      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+      #          --username="root"
+      #          --password="root"
+      #          update
+      #
+      #      - name: Liquibase rollback (storage)
+      #        run: >
+      #          liquibase
+      #          --classpath=src/main/resources
+      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
+      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+      #          --username="root"
+      #          --password="root"
+      #          rollback-count 1
+
+      - name: Liquibase update (user)
+        run: >
+          liquibase
+          --classpath=src/main/resources
+          --changelog-file=db/changelog/user/changelog-user-master.yaml
+          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+          --username="root"
+          --password="root"
+          update
+
+      - name: Liquibase rollback (user)
+        run: >
+          liquibase
+          --classpath=src/main/resources
+          --changelog-file=db/changelog/user/changelog-user-master.yaml
+          --url="jdbc:postgresql://localhost:5432/liquibase_test"
+          --username="root"
+          --password="root"
+          rollback-count 1
+
+  # ========== SONAR ==========#
+  sonar:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
+      - name: Download JaCoCo report
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco
+          path: target/site/jacoco/
+      - name: Verify JaCoCo XML present
+        run: |
+          ls -la target/site/jacoco
+          test -f target/site/jacoco/jacoco.xml
+      - name: Compile (no tests) to produce bytecode
+        run: mvn -B -DskipTests compile
+      - name: Debug Sonar settings
+        run: |
+          mvn -q -DforceStdout help:evaluate -Dexpression=sonar.sources || true
+          mvn -q -DforceStdout help:evaluate -Dexpression=sonar.tests || true
+      - name: SonarCloud Scan
+        run: >
+          mvn -B -Psonar -DskipTests sonar:sonar
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          -Dsonar.organization=${{ secrets.SONAR_ORG }}
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.sources=src/main/java
+          -Dsonar.tests=src/test/java
+          -Dsonar.coverage.exclusions=src/test/java/**,**/*Test.java,**/*Tests.java,**/*IT.java
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+
+  # ========== DOCKER BUILD & PUSH (GHCR) ==========#
+  docker_build_push:
+    name: Docker Build & Push (GHCR)
+    runs-on: ubuntu-latest
+    needs: [ tests, liquibase ]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/mrd-fox/skillshub
+          tags: |
+            type=raw,value=latest
+            type=raw,value=sha-${{ github.sha }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+# NEXT STEP (Plan):
+# - Add docker-compose.prod.yml pulling ghcr.io/mrd-fox/skillshub:latest
+# - Add Hetzner runbook (pull/up/rollback) + optional GHCR token if package is private

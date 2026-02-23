@@ -37,3 +37,9 @@ build/
 *.env
 .env
 /envs
+
+tmp/
+
+doc/*
+logs/
+tech-doc/

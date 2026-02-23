@@ -1,0 +1,176 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-129-cleanup-chapters-and-videos
+      author: Marina DARDE
+      changes:
+        
+        - dropColumn:
+            tableName: chapters
+            columnName: url
+
+
+        - dropColumn:
+            tableName: videos
+            columnName: duration
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: duration
+                  type: BIGINT
+                  defaultValueNumeric: 0
+
+
+        - dropColumn:
+            tableName: courses
+            columnName: created_at
+        - dropColumn:
+            tableName: courses
+            columnName: updated_at
+        - addColumn:
+            tableName: courses
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - dropColumn:
+            tableName: sections
+            columnName: created_at
+        - dropColumn:
+            tableName: sections
+            columnName: updated_at
+        - addColumn:
+            tableName: sections
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - dropColumn:
+            tableName: chapters
+            columnName: created_at
+        - dropColumn:
+            tableName: chapters
+            columnName: updated_at
+        - addColumn:
+            tableName: chapters
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - dropColumn:
+            tableName: videos
+            columnName: created_at
+        - dropColumn:
+            tableName: videos
+            columnName: updated_at
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+      rollback:
+        - dropColumn:
+            tableName: videos
+            columnName: duration
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: duration
+                  type: INTERVAL
+
+        - addColumn:
+            tableName: chapters
+            columns:
+              - column:
+                  name: url
+                  type: TEXT
+
+        - dropColumn:
+            tableName: courses
+            columnName: created_at
+        - dropColumn:
+            tableName: courses
+            columnName: updated_at
+        - addColumn:
+            tableName: courses
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - dropColumn:
+            tableName: sections
+            columnName: created_at
+        - dropColumn:
+            tableName: sections
+            columnName: updated_at
+        - addColumn:
+            tableName: sections
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - dropColumn:
+            tableName: chapters
+            columnName: created_at
+        - dropColumn:
+            tableName: chapters
+            columnName: updated_at
+        - addColumn:
+            tableName: chapters
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - dropColumn:
+            tableName: videos
+            columnName: created_at
+        - dropColumn:
+            tableName: videos
+            columnName: updated_at
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP

@@ -1,0 +1,108 @@
+databaseChangeLog:
+  # Add soft delete support to courses table
+  - changeSet:
+      id: SH-166-001-add-deleted-at-to-courses
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: courses
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+        - createIndex:
+            indexName: idx_courses_deleted_at
+            tableName: courses
+            columns:
+              - column:
+                  name: deleted_at
+      rollback:
+        - dropIndex:
+            indexName: idx_courses_deleted_at
+            tableName: courses
+        - dropColumn:
+            tableName: courses
+            columnName: deleted_at
+
+  # Add soft delete support to sections table
+  - changeSet:
+      id: SH-166-002-add-deleted-at-to-sections
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: sections
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+        - createIndex:
+            indexName: idx_sections_deleted_at
+            tableName: sections
+            columns:
+              - column:
+                  name: deleted_at
+      rollback:
+        - dropIndex:
+            indexName: idx_sections_deleted_at
+            tableName: sections
+        - dropColumn:
+            tableName: sections
+            columnName: deleted_at
+
+  # Add soft delete support to chapters table
+  - changeSet:
+      id: SH-166-003-add-deleted-at-to-chapters
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: chapters
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+        - createIndex:
+            indexName: idx_chapters_deleted_at
+            tableName: chapters
+            columns:
+              - column:
+                  name: deleted_at
+      rollback:
+        - dropIndex:
+            indexName: idx_chapters_deleted_at
+            tableName: chapters
+        - dropColumn:
+            tableName: chapters
+            columnName: deleted_at
+
+  # Add soft delete support to videos table
+  - changeSet:
+      id: SH-166-004-add-deleted-at-to-videos
+      author: Marina DARDE
+      changes:
+        - addColumn:
+            tableName: videos
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+        - createIndex:
+            indexName: idx_videos_deleted_at
+            tableName: videos
+            columns:
+              - column:
+                  name: deleted_at
+      rollback:
+        - dropIndex:
+            indexName: idx_videos_deleted_at
+            tableName: videos
+        - dropColumn:
+            tableName: videos
+            columnName: deleted_at

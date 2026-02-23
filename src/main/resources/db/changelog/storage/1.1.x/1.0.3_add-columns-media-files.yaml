@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-126_add-constraints-media-files
+      author: Marina DARDE
+      labels: storage,media
+      context: storage
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: media_files
+      changes:
+        - addColumn:
+            tableName: media_files
+            columns:
+              - column:
+                  name: width
+                  type: INT
+              - column:
+                  name: height
+                  type: INT
+              - column:
+                  name: duration
+                  type: INT
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: media_files
+            columnName: status
+        - dropColumn:
+            tableName: media_files
+            columnName: duration
+        - dropColumn:
+            tableName: media_files
+            columnName: height
+        - dropColumn:
+            tableName: media_files
+            columnName: width

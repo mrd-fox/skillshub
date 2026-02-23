@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-162_make-first-last-name-nullable
+      author: Marina DARDE
+      labels: user,account
+      context: user
+      changes:
+        - dropNotNullConstraint:
+            tableName: user_account
+            columnName: first_name
+            columnDataType: varchar(100)
+        - dropNotNullConstraint:
+            tableName: user_account
+            columnName: last_name
+            columnDataType: varchar(100)
+      rollback:
+        - addNotNullConstraint:
+            tableName: user_account
+            columnName: first_name
+            columnDataType: varchar(100)
+        - addNotNullConstraint:
+            tableName: user_account
+            columnName: last_name
+            columnDataType: varchar(100)

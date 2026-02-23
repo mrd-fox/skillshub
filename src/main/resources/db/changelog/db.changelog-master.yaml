@@ -1,3 +1,7 @@
 databaseChangeLog:
   - include:
-      file: db/changelog/1.1.x/1.0.0-init_database.yaml
+      file: db/changelog/course/changelog-course-master.yaml
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/user/changelog-user-master.yaml
+      relativeToChangelogFile: false

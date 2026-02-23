@@ -1,0 +1,131 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-course-structure
+      author: Marina DARDE
+      changes:
+        - sql:
+            splitStatements: false
+            sql: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+                    nullable: false
+
+        - createTable:
+            tableName: courses
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: price
+                  type: BIGINT
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+              - column:
+                  name: author_id
+                  type: UUID
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_course_author
+                    references: users(id)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - createTable:
+            tableName: sections
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_section_course
+                    references: courses(id)
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - createTable:
+            tableName: chapters
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: section_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_chapter_section
+                    references: sections(id)
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: url
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+      rollback:
+        - dropTable:
+            tableName: chapters
+        - dropTable:
+            tableName: sections
+        - dropTable:
+            tableName: courses
+        - dropTable:
+            tableName: users

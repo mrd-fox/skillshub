@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: SH-126_add-constraints-media-files
+      author: Marina DARDE
+      labels: storage,media
+      context: storage
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: media_files
+      changes:
+        - modifyDataType:
+            tableName: media_files
+            columnName: duration
+            newDataType: BIGINT
+      rollback:
+        - modifyDataType:
+            tableName: media_files
+            columnName: duration
+            newDataType: INT
