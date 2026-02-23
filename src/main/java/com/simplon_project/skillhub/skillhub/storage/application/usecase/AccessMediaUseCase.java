@@ -4,10 +4,12 @@ import com.simplon_project.skillhub.skillhub.storage.application.port.in.AccessM
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.PresignedUrlPort;
 import com.simplon_project.skillhub.skillhub.storage.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class AccessMediaUseCase implements AccessMediaPort {
 
     private final PresignedUrlPort presignedUrlPort;

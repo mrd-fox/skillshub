@@ -11,10 +11,12 @@ import com.simplon_project.skillhub.skillhub.storage.domaine.model.VideoMetadata
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class MediaEventPublisher implements PublishMediaUploadedPort, PublishMetadataExtractedPort, EventPublisherPort {
 
 

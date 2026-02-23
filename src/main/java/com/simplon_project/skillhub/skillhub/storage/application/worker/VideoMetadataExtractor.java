@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.storage.application.worker;
 
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.VideoMetadata;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 
 @Component
 @Slf4j
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class VideoMetadataExtractor {
 
     public VideoMetadata extract(Path file) {

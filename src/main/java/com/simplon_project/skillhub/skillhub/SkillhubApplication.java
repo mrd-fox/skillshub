@@ -1,7 +1,6 @@
 package com.simplon_project.skillhub.skillhub;
 
 import com.simplon_project.skillhub.skillhub.course.config.RabbitCourseVideoDeletionProps;
-import com.simplon_project.skillhub.skillhub.storage.config.StorageProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,13 +11,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableConfigurationProperties(
         {
-                StorageProperties.class,
                 RabbitCourseVideoDeletionProps.class
         })
 @Slf4j
 public class SkillhubApplication {
     public static void main(String[] args) {
         SpringApplication.run(SkillhubApplication.class, args);
-        log.info("✅ Application démarrée — test création du fichier de log");
+        log.info("✅ Application up and running");
     }
 }

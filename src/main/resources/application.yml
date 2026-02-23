@@ -48,7 +48,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus,health,info, metrics
+        include: prometheus,health,info, metrics, beans,conditions
   endpoint:
     prometheus:
       access: unrestricted
@@ -67,6 +67,7 @@ rabbitmq:
 # 📦 Storage Service
 ############################################################
 storage:
+  enabled: false
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:course.events}
     upload-routing-key: ${RABBITMQ_ROUTING_KEY:course.media.uploaded.v1}

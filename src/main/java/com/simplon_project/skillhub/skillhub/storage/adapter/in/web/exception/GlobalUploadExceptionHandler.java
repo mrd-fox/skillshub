@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.storage.adapter.in.web.exception;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -8,6 +9,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 
 @ControllerAdvice
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class GlobalUploadExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class) // SPRING's
