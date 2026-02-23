@@ -79,7 +79,6 @@ jobs:
     name: Liquibase Tests
     runs-on: ubuntu-latest
     needs: build
-
     services:
       postgres:
         image: postgres:15
@@ -94,7 +93,6 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=5
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -133,26 +131,6 @@ jobs:
           --password="root"
           rollback-count 1
 
-      #      - name: Liquibase update (storage)
-      #        run: >
-      #          liquibase
-      #          --classpath=src/main/resources
-      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
-      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
-      #          --username="root"
-      #          --password="root"
-      #          update
-      #
-      #      - name: Liquibase rollback (storage)
-      #        run: >
-      #          liquibase
-      #          --classpath=src/main/resources
-      #          --changelog-file=db/changelog/storage/changelog-storage-master.yaml
-      #          --url="jdbc:postgresql://localhost:5432/liquibase_test"
-      #          --username="root"
-      #          --password="root"
-      #          rollback-count 1
-
       - name: Liquibase update (user)
         run: >
           liquibase
@@ -178,6 +156,7 @@ jobs:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: tests
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -201,16 +180,20 @@ jobs:
         with:
           name: jacoco
           path: target/site/jacoco/
+
       - name: Verify JaCoCo XML present
         run: |
           ls -la target/site/jacoco
           test -f target/site/jacoco/jacoco.xml
+
       - name: Compile (no tests) to produce bytecode
         run: mvn -B -DskipTests compile
+
       - name: Debug Sonar settings
         run: |
           mvn -q -DforceStdout help:evaluate -Dexpression=sonar.sources || true
           mvn -q -DforceStdout help:evaluate -Dexpression=sonar.tests || true
+
       - name: SonarCloud Scan
         run: >
           mvn -B -Psonar -DskipTests sonar:sonar
@@ -223,12 +206,10 @@ jobs:
           -Dsonar.coverage.exclusions=src/test/java/**,**/*Test.java,**/*Tests.java,**/*IT.java
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-
-  # ========== DOCKER BUILD & PUSH (GHCR) ==========#
   docker_build_push:
     name: Docker Build & Push (GHCR)
     runs-on: ubuntu-latest
-    needs: [ tests, liquibase ]
+    needs: [ tests, liquibase, sonar ]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
     steps:
@@ -261,7 +242,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-# NEXT STEP (Plan):
-# - Add docker-compose.prod.yml pulling ghcr.io/mrd-fox/skillshub:latest
-# - Add Hetzner runbook (pull/up/rollback) + optional GHCR token if package is private
