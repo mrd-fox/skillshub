@@ -7,6 +7,7 @@ import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaContent;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.VideoStatusEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.nio.file.Path;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 @Slf4j
 public class VideoProcessingWorker {
     private final UpdateMediaPort updateMediaPort;

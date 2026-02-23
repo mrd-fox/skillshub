@@ -7,6 +7,7 @@ import com.simplon_project.skillhub.skillhub.storage.config.StorageProperties;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaId;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.StoragePresignedMedia;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
@@ -15,6 +16,7 @@ import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class InitiateUploadUseCase implements InitiateUploadPort {
 
     private final PresignedUrlPort presignedUrlPort;

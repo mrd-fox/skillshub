@@ -2,11 +2,13 @@ package com.simplon_project.skillhub.skillhub.storage.adapter.out.messaging.list
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class VideoMetadataStorageExtractListener {
     //todo to implement
 //    @RabbitListener(

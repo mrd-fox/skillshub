@@ -10,6 +10,7 @@ import com.simplon_project.skillhub.skillhub.storage.config.StorageProperties;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaMetadata;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.StorageObjectMetadata;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
@@ -22,6 +23,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class S3StorageAdapter implements StoragePort, StatObjectPort, DownloadStoragePort {
     private final AmazonS3 amazonS3;
     private final StorageProperties props;

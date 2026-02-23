@@ -1,6 +1,7 @@
 package com.simplon_project.skillhub.skillhub.storage.config.resolver;
 
 import com.simplon_project.skillhub.skillhub.storage.config.UploaderId;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 @Component
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class UploaderIdResolver implements HandlerMethodArgumentResolver {
     @Override
     public boolean supportsParameter(MethodParameter parameter) {

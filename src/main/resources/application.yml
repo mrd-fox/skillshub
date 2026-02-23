@@ -48,7 +48,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus,health,info, metrics
+        include: prometheus,health,info, metrics, beans,conditions
   endpoint:
     prometheus:
       access: unrestricted
@@ -67,6 +67,7 @@ rabbitmq:
 # 📦 Storage Service
 ############################################################
 storage:
+  enabled: false
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:course.events}
     upload-routing-key: ${RABBITMQ_ROUTING_KEY:course.media.uploaded.v1}
@@ -102,14 +103,14 @@ course:
       timeout-minutes: ${RABBITMQ_VIDEO_POLLING_TIMEOUT_MINUTES:15}
 
     video-deletion:
-      enabled: true  # Enable deletion worker
-      deletion-queue: course.video.deletion.queue
-      deletion-routing-key: course.video.deletion.requested
-      deletion-delay-queue: course.video.deletion.delay.queue
-      deletion-delay-routing-key: course.video.deletion.delay
-      max-retry-attempts: 5  # Max retry before marking as FAILED
-      dispatcher-fixed-delay-ms: 5000  # Outbox dispatcher polling interval (5 seconds)
-      dispatcher-batch-size: 10  # Max events processed per dispatcher iteration
+      enabled: ${VIDEO_DELETION_ENABLED:true}  # Enable deletion worker
+      deletion-queue: ${VIDEO_DELETION_QUEUE:course.video.deletion.queue}
+      deletion-routing-key: ${VIDEO_DELETION_ROUTING_KEY:course.video.deletion.requested}
+      deletion-delay-queue: ${VIDEO_DELETION_DELAY_QUEUE:course.video.deletion.delay.queue}
+      deletion-delay-routing-key: ${VIDEO_DELETION_DELAY_ROUTING_KEY:course.video.deletion.delay}
+      max-retry-attempts: ${VIDEO_DELETION_MAX_RETRY_ATTEMPTS:5}  # Max retry before marking as FAILED
+      dispatcher-fixed-delay-ms: ${VIDEO_DELETION_DISPATCHER_FIXED_DELAY_MS:5000}  # Outbox dispatcher polling interval (5 seconds)
+      dispatcher-batch-size: ${VIDEO_DELETION_DISPATCHER_BATCH_SIZE:10}  # Max events processed per dispatcher iteration
 
 
 

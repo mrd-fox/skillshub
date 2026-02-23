@@ -10,6 +10,7 @@ import com.simplon_project.skillhub.skillhub.storage.config.StorageProperties;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaContent;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaId;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class CompleteUploadUseCase implements CompleteUploadMediaContentPort {
 
     private final StatObjectPort statObjectPort;

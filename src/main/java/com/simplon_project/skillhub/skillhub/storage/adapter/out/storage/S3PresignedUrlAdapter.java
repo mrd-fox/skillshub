@@ -5,6 +5,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.PresignedUrlPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.util.Date;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class S3PresignedUrlAdapter implements PresignedUrlPort {
 
     private final AmazonS3 amazonClient;

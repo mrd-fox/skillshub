@@ -10,11 +10,12 @@ import com.simplon_project.skillhub.skillhub.storage.domaine.model.VideoStatusEn
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class JpaMediaContentPersistenceAdapter implements SaveMediaContentPort, UpdateMediaPort {
 
 

@@ -5,10 +5,12 @@ import com.simplon_project.skillhub.skillhub.storage.application.port.out.GetObj
 import com.simplon_project.skillhub.skillhub.storage.application.port.out.minIo.StoragePort;
 import com.simplon_project.skillhub.skillhub.storage.domaine.model.MediaMetadata;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class ObjectMetadataUseCase implements GetObjectMetadataPort {
 
     private final StoragePort storagePort;

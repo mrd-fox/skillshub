@@ -2,6 +2,7 @@ package com.simplon_project.skillhub.skillhub.storage.application.worker;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.concurrent.Semaphore;
 
 @Component
 @Slf4j
+@ConditionalOnProperty(prefix = "storage", name = "enabled", havingValue = "true")
 public class DiskAwareQueue {
 
 
