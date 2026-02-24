@@ -1,0 +1,71 @@
+{
+    email dardemarina@gmail.com
+
+    log {
+            output stdout
+            format console
+            level INFO
+        }
+}
+
+# =========================================================
+# Root - probe simple
+# =========================================================
+skillshubdev.duckdns.org {
+    respond "HOST_HTTP_OK" 200
+}
+
+# =========================================================
+# API - public
+# =========================================================
+skillshubdev-api.duckdns.org {
+    encode zstd gzip
+
+    header {
+               Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+               X-Content-Type-Options "nosniff"
+               Referrer-Policy "no-referrer"
+           }
+
+    reverse_proxy backend-service:10020
+}
+
+# =========================================================
+# Grafana - public + BasicAuth au proxy
+# =========================================================
+skillshubdev-grafana.duckdns.org {
+    encode zstd gzip
+
+    basicauth {
+              {$GRAFANA_BASIC_AUTH_USER} {$GRAFANA_BASIC_AUTH_HASH}
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer"
+    }
+
+    reverse_proxy grafana:3000
+}
+
+# =========================================================
+# RabbitMQ UI - public + BasicAuth au proxy
+# =========================================================
+skillshubdev-rabbit.duckdns.org {
+     encode zstd gzip
+
+    basicauth {
+        {$RABBIT_BASIC_AUTH_USER} {$RABBIT_BASIC_AUTH_HASH}
+    }
+
+    header {
+           Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+           X-Content-Type-Options "nosniff"
+           X-Frame-Options "SAMEORIGIN"
+           Referrer-Policy "no-referrer"
+    }
+
+    reverse_proxy rabbitmq:15672
+}

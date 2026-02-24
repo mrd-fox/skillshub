@@ -39,18 +39,7 @@ diagram_generate:
 
 
 
-# -------------
-# 📦 INSTALLATION LOCALE
-# -------------
-#todo verifier
-#install-deps:
-#	@echo "Installing system dependencies (ffmpeg for ffprobe)..."
-#ifeq ($(shell uname -s),Darwin)
-#	brew install ffmpeg
-#else
-#	sudo apt-get update && sudo apt-get install -y ffmpeg
-#endif
-#	@echo "✅ ffmpeg (and ffprobe) installed."
+
 # #######################################################################################
 # Liquibase commands for course_service (PostgreSQL)
 # #######################################################################################
