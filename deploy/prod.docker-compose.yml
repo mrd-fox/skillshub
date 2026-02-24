@@ -1,0 +1,207 @@
+version: "3.9"
+
+volumes:
+  postgres-course-data:
+  postgres-user-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  skillshub-net:
+    driver: bridge
+
+services:
+  # =========================================================
+  # Reverse proxy
+  # =========================================================
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    env_file:
+      - ./envs/caddy.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # PostgreSQL - Course DB (local-only for SSH tunnel)
+  # =========================================================
+  postgres-course:
+    image: postgres:15
+    container_name: postgres-course
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_COURSE_DB}
+      POSTGRES_USER: ${POSTGRES_COURSE_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_COURSE_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres-course-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_COURSE_USER} -d ${POSTGRES_COURSE_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # PostgreSQL - User DB (local-only for SSH tunnel)
+  # =========================================================
+  postgres-user:
+    image: postgres:15
+    container_name: postgres-user
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_USER_DB}
+      POSTGRES_USER: ${POSTGRES_USER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_USER_PASSWORD}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER_USER} -d ${POSTGRES_USER_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # RabbitMQ (internal only - UI exposed via Caddy)
+  # =========================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD-SHELL", "rabbitmq-diagnostics -q ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # Backend (internal only - exposed via Caddy)
+  # =========================================================
+  backend-service:
+    image: ghcr.io/mrd-fox/skillshub:latest
+    container_name: backend-service
+    restart: unless-stopped
+    env_file:
+      - ./envs/prod.env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SERVER_PORT: ${SERVER_PORT}
+
+      SPRING_DATASOURCE_COURSE_URL: ${SPRING_DATASOURCE_COURSE_URL}
+      SPRING_DATASOURCE_COURSE_USERNAME: ${SPRING_DATASOURCE_COURSE_USERNAME}
+      SPRING_DATASOURCE_COURSE_PASSWORD: ${SPRING_DATASOURCE_COURSE_PASSWORD}
+
+      SPRING_DATASOURCE_USER_URL: ${SPRING_DATASOURCE_USER_URL}
+      SPRING_DATASOURCE_USER_USERNAME: ${SPRING_DATASOURCE_USER_USERNAME}
+      SPRING_DATASOURCE_USER_PASSWORD: ${SPRING_DATASOURCE_USER_PASSWORD}
+
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST}
+    depends_on:
+      postgres-course:
+        condition: service_healthy
+      postgres-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # Prometheus (internal only)
+  # =========================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prod.prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      - backend-service
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # Loki (internal only)
+  # =========================================================
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    restart: unless-stopped
+    user: "0"
+    volumes:
+      - ./prod.loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/config.yml
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # Promtail (internal only)
+  # =========================================================
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./prod.promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - skillshub-net
+
+  # =========================================================
+  # Grafana (internal only - exposed via Caddy)
+  # =========================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - skillshub-net

@@ -19,16 +19,17 @@ spring:
   datasource:
     course:
       url: ${SPRING_DATASOURCE_COURSE_URL:jdbc:postgresql://localhost:5433/course_service}
-      username: ${SPRING_DATASOURCE_COURSE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_COURSE_PASSWORD:root}
+      username: ${SPRING_DATASOURCE_COURSE_USERNAME}
+      password: ${SPRING_DATASOURCE_COURSE_PASSWORD}
     storage:
       url: ${SPRING_DATASOURCE_STORAGE_URL:jdbc:postgresql://localhost:5434/storage_service}
-      username: ${SPRING_DATASOURCE_STORAGE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_STORAGE_PASSWORD:root}
+      username: ${SPRING_DATASOURCE_STORAGE_USERNAME}
+      password: ${SPRING_DATASOURCE_STORAGE_PASSWORD}
     user:
       url: ${SPRING_DATASOURCE_USER_URL:jdbc:postgresql://localhost:5435/user_service}
-      username: ${SPRING_DATASOURCE_USER_USERNAME:root}
-      password: ${SPRING_DATASOURCE_USER_PASSWORD:root}
+      username: ${SPRING_DATASOURCE_USER_USERNAME}
+      password: ${SPRING_DATASOURCE_USER_PASSWORD}
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
@@ -37,6 +38,7 @@ spring:
         format_sql: true
     hibernate:
       ddl-auto: none
+
   bucket: ${STORAGE_BUCKET:storage}
   prefix: ${STORAGE_PREFIX:media}
   presign-ttl-seconds: ${STORAGE_PRESIGN_TTL_SECONDS:900}
@@ -59,10 +61,11 @@ management:
 rabbitmq:
   host: ${RABBITMQ_HOST:localhost}
   port: ${RABBITMQ_PORT:5672}
-  username: ${RABBITMQ_USER:admin}
-  password: ${RABBITMQ_PASS:admin}
+  username: ${RABBITMQ_USER}
+  password: ${RABBITMQ_PASS}
   virtual-host: ${RABBITMQ_VHOST:/}
   connection-timeout: 5000
+
 ############################################################
 # 📦 Storage Service
 ############################################################
@@ -74,7 +77,6 @@ storage:
     metadata-routing-key: ${RABBITMQ_ROUTING_KEY_METADATA:course.media.metadata.extracted.v1}
     uploaded-queue: ${RABBITMQ_QUEUE_UPLOADED:course.media.uploaded.queue}
     metadata-queue: ${RABBITMQ_QUEUE_METADATA:course.media.metadata.extracted.queue}
-  #    default-receive-queue: ${RABBITMQ_QUEUE:course.media.uploaded.queue}
   bucket: ${STORAGE_BUCKET:storage}
   prefix: ${STORAGE_PREFIX:media}
   presign-ttl-seconds: ${STORAGE_PRESIGN_TTL_SECONDS:900}
@@ -82,6 +84,7 @@ storage:
   worker:
     max-concurrent: ${MAX_CONCURRENT:2}
     min-free-space-mb: ${MIN_FREE_SPACE_MB:1000}
+
 ############################################################
 # 📦 Course Service
 ############################################################
@@ -103,30 +106,30 @@ course:
       timeout-minutes: ${RABBITMQ_VIDEO_POLLING_TIMEOUT_MINUTES:15}
 
     video-deletion:
-      enabled: ${VIDEO_DELETION_ENABLED:true}  # Enable deletion worker
+      enabled: ${VIDEO_DELETION_ENABLED:true}
       deletion-queue: ${VIDEO_DELETION_QUEUE:course.video.deletion.queue}
       deletion-routing-key: ${VIDEO_DELETION_ROUTING_KEY:course.video.deletion.requested}
       deletion-delay-queue: ${VIDEO_DELETION_DELAY_QUEUE:course.video.deletion.delay.queue}
       deletion-delay-routing-key: ${VIDEO_DELETION_DELAY_ROUTING_KEY:course.video.deletion.delay}
-      max-retry-attempts: ${VIDEO_DELETION_MAX_RETRY_ATTEMPTS:5}  # Max retry before marking as FAILED
-      dispatcher-fixed-delay-ms: ${VIDEO_DELETION_DISPATCHER_FIXED_DELAY_MS:5000}  # Outbox dispatcher polling interval (5 seconds)
-      dispatcher-batch-size: ${VIDEO_DELETION_DISPATCHER_BATCH_SIZE:10}  # Max events processed per dispatcher iteration
-
-
+      max-retry-attempts: ${VIDEO_DELETION_MAX_RETRY_ATTEMPTS:5}
+      dispatcher-fixed-delay-ms: ${VIDEO_DELETION_DISPATCHER_FIXED_DELAY_MS:5000}
+      dispatcher-batch-size: ${VIDEO_DELETION_DISPATCHER_BATCH_SIZE:10}
 
 ############################################################
 # 📦 User Service
 ############################################################
 user-service:
   base-url: http://localhost:10020
+
 ############################################################
-# 📦 MinIO
+# 📦 MinIO (inactive in MVP, but keep config clean)
 ############################################################
 minio:
   url: ${MINIO_URL:http://localhost:9000}
-  access-key: ${MINIO_ACCESS_KEY:minioadmin}
-  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
   bucket: ${MINIO_BUCKET:storage}
+
 ############################################################
 # 📦 Vimeo
 ############################################################
@@ -144,8 +147,3 @@ logging:
     com.simplon_project.skillhub: DEBUG
     org.springframework.amqp: INFO
     com.rabbitmq.client: INFO
-
-
-
-
-
