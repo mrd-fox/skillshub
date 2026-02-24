@@ -4,24 +4,22 @@ server:
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME:skillshub-backend}
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:docker-all}
   servlet:
     multipart:
       max-file-size: 1GB
       max-request-size: 1GB
       file-size-threshold: 5MB
 
-
   datasource:
     course:
-      url: $${SPRING_DATASOURCE_COURSE_URL:jdbc:postgresql://postgres-course:5432/course_service}
-      username: ${SPRING_DATASOURCE_COURSE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_COURSE_PASSWORD:root}
-    storage:
-      url: ${SPRING_DATASOURCE_STORAGE_URL:jdbc:postgresql://postgres-storage:5432/storage_service}
-      username: ${SPRING_DATASOURCE_STORAGE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_STORAGE_PASSWORD:root}
+      url: ${SPRING_DATASOURCE_COURSE_URL:jdbc:postgresql://postgres-course:5432/course_service}
+      username: ${SPRING_DATASOURCE_COURSE_USERNAME}
+      password: ${SPRING_DATASOURCE_COURSE_PASSWORD}
+    user:
+      url: ${SPRING_DATASOURCE_USER_URL:jdbc:postgresql://postgres-user:5432/user_service}
+      username: ${SPRING_DATASOURCE_USER_USERNAME}
+      password: ${SPRING_DATASOURCE_USER_PASSWORD}
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
@@ -30,38 +28,18 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
 rabbitmq:
   host: ${RABBITMQ_HOST:rabbitmq}
   port: ${RABBITMQ_PORT:5672}
-  username: ${RABBITMQ_USER:admin}
-  password: ${RABBITMQ_PASS:admin}
+  username: ${RABBITMQ_USER}
+  password: ${RABBITMQ_PASS}
   virtual-host: ${RABBITMQ_VHOST:/}
   connection-timeout: 5000
 
-minio:
-  url: ${MINIO_URL:http://minio:9000}
-  access-key: ${MINIO_ACCESS_KEY:minioadmin}
-  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
-  bucket: ${MINIO_BUCKET:storage}
-
 # ==============================================================
-# 🗃️ Storage & Worker Configuration
+# 🗃️ Course Service RabbitMQ Configuration
 # ==============================================================
-storage:
-  rabbitmq:
-    exchange: ${RABBITMQ_EXCHANGE:course.events}
-    upload-routing-key: ${RABBITMQ_ROUTING_KEY:course.media.uploaded.v1}
-    metadata-routing-key: ${RABBITMQ_ROUTING_KEY_METADATA:course.media.metadata.extracted.v1}
-    uploaded-queue: ${RABBITMQ_QUEUE_UPLOADED:course.media.uploaded.queue}
-    metadata-queue: ${RABBITMQ_QUEUE_METADATA:course.media.metadata.extracted.queue}
-  bucket: ${STORAGE_BUCKET:storage}
-  prefix: ${STORAGE_PREFIX:media}
-  presign-ttl-seconds: ${STORAGE_PRESIGN_TTL_SECONDS:900}
-  tempDir: ${STORAGE_TMP_DIR:./tmp}
-  worker:
-    max-concurrent: ${MAX_CONCURRENT:2}
-    min-free-space-mb: ${MIN_FREE_SPACE_MB:1000}
-
 course:
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:course.events}
@@ -69,6 +47,12 @@ course:
     metadata-routing-key: ${RABBITMQ_ROUTING_KEY_METADATA:course.media.metadata.extracted.v1}
     uploaded-queue: ${RABBITMQ_QUEUE_UPLOADED:course.media.uploaded.queue}
     metadata-queue: ${RABBITMQ_QUEUE_METADATA:course.media.metadata.extracted.queue}
+
+# ==============================================================
+# 🗃️ User Service
+# ==============================================================
+user-service:
+  base-url: ${USER_SERVICE_BASE_URL:http://backend-service:${SERVER_PORT:10020}}
 
 # ==============================================================
 # 📈 Monitoring
@@ -91,6 +75,6 @@ management:
 logging:
   level:
     root: INFO
-    com.skillshub: DEBUG
+    com.simplon_project.skillhub: DEBUG
     org.springframework.amqp: INFO
     com.rabbitmq.client: INFO
