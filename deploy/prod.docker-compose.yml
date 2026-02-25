@@ -12,7 +12,8 @@ volumes:
 
 networks:
   skillshub-net:
-    driver: bridge
+    external: true
+    name: skillshub-net
 
 services:
   # =========================================================
