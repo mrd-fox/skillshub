@@ -27,7 +27,12 @@ skillshubdev-api.duckdns.org {
                Referrer-Policy "no-referrer"
            }
 
-    reverse_proxy backend-service:10020
+    @swagger path /swagger-ui* /v3/api-docs*
+    basicauth @swagger {
+                       {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
+}
+
+reverse_proxy backend-service:10020
 }
 
 # =========================================================
@@ -68,4 +73,24 @@ skillshubdev-rabbit.duckdns.org {
     }
 
     reverse_proxy rabbitmq:15672
+}
+
+# =========================================================
+# Keycloak - public (Admin console + OIDC)
+# =========================================================
+skillshubdev-auth.duckdns.org {
+                              encode zstd gzip
+
+                              header {
+                                     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+                                     X-Content-Type-Options "nosniff"
+                                     Referrer-Policy "no-referrer"
+                                     }
+
+                              reverse_proxy keycloak:8080 {
+                                                          header_up -Forwarded
+                                                          header_up X-Forwarded-Proto https
+                                                          header_up X-Forwarded-Host {host}
+                                                          header_up X-Forwarded-Port 443
+                                                          }
 }
