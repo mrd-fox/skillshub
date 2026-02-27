@@ -42,81 +42,80 @@ skillshubdev-api.duckdns.org {
 # Swagger UI (BasicAuth)
 # ----------------------------
     @swagger_ui path /swagger-ui* /swagger-resources* /webjars*
-    basicauth @swagger_ui {
-                          {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
+    basic_auth @swagger_ui {
+                           {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
 }
 
-# OpenAPI JSON must be reachable by the UI
+# OpenAPI JSON must be reachable by the UI (PAS protégé, sinon Swagger UI ne charge pas)
 @openapi path /v3/api-docs*
               reverse_proxy @openapi backend-service:10020 {
                                                            header_up X-Forwarded-Proto https
-                                                           header_up X-Forwarded-Host {host}
                                                            header_up X-Forwarded-Port 443
                                                            }
 
-              # Swagger UI assets
+              # Swagger UI assets (protégés)
               reverse_proxy @swagger_ui backend-service:10020 {
                                                               header_up X-Forwarded-Proto https
-                                                              header_up X-Forwarded-Host {host}
                                                               header_up X-Forwarded-Port 443
                                                               }
 
               # ----------------------------
-              # API Gateway (/api/*) + CORS
+              # API Gateway (/api/*) + CORS (pour Swagger UI)
               # ----------------------------
               @api path /api/*
+              @preflight method OPTIONS
 
-              # Preflight CORS (Swagger UI / Browser)
-              @preflight {
-                         method OPTIONS
-                         path /api/*
-                         }
+                                handle @api {
+                                            # Préflight
+                                            handle @preflight {
+                                                              header {
+                                                                     Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
+                                                                     Access-Control-Allow-Methods "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                                                                     Access-Control-Allow-Headers "Authorization,Content-Type,Accept,Origin,X-Requested-With"
+                                                                     Access-Control-Allow-Credentials "true"
+                                                                     Access-Control-Max-Age "86400"
+                                                                     Vary "Origin"
+                                                                     Vary "Access-Control-Request-Method"
+                                                                          Vary "Access-Control-Request-Headers"
+                                                                     }
+                                                              respond "" 204
+                                                              }
 
-              respond @preflight 204 {
-                                     header Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
-                                     header Access-Control-Allow-Methods "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-                                     header Access-Control-Allow-Headers "Authorization,Content-Type,Accept,Origin,X-Requested-With"
-                                            header Access-Control-Allow-Credentials "true"
-                                            header Access-Control-Max-Age "86400"
-                                     header Vary "Origin"
-                                     header Vary "Access-Control-Request-Method"
-                                     header Vary "Access-Control-Request-Headers"
-                                     }
+                                            # Réponses API
+                                            header {
+                                                   Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
+                                                   Access-Control-Allow-Credentials "true"
+                                                   Vary "Origin"
+                                                   Vary "Access-Control-Request-Method"
+                                                   Vary "Access-Control-Request-Headers"
+                                                   }
 
-              # CORS headers on actual API responses
-              header @api {
-                          Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
-                          Access-Control-Allow-Credentials "true"
-                          Vary "Origin"
-                          Vary "Access-Control-Request-Method"
-                          Vary "Access-Control-Request-Headers"
-                          }
+                                            reverse_proxy gateway-service:8080
+                                            }
 
-reverse_proxy @api gateway-service:8080
+              # Safety fallback
+              reverse_proxy gateway-service:8080
+              }
 
-# Safety fallback (optional): anything else -> gateway
-reverse_proxy gateway-service:8080
-}
+              # =========================================================
+              # Grafana - public + BasicAuth au proxy
+              # =========================================================
+              skillshubdev-grafana.duckdns.org {
+                                               encode zstd gzip
 
-# =========================================================
-# Grafana - public + BasicAuth au proxy
-# =========================================================
-skillshubdev-grafana.duckdns.org {
-                                 encode zstd gzip
-
-                                 basicauth {
+                                               basic_auth {
         {$GRAFANA_BASIC_AUTH_USER} {$GRAFANA_BASIC_AUTH_HASH}
     }
 
-                                 header {
-                                        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-                                        X-Content-Type-Options "nosniff"
-                                        X-Frame-Options "SAMEORIGIN"
-                                        Referrer-Policy "no-referrer"
-                                        }
+                                               header {
+                                                      Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+                                                      X-Content-Type-Options "nosniff"
+                                                      X-Frame-Options "SAMEORIGIN"
+                                                      Referrer-Policy "no-referrer"
+                                                      }
 
-                                 reverse_proxy grafana:3000
-                                 }
+                                               reverse_proxy grafana:3000
+                                               }
 
 # =========================================================
 # RabbitMQ UI - public + BasicAuth au proxy
@@ -124,7 +123,7 @@ skillshubdev-grafana.duckdns.org {
 skillshubdev-rabbit.duckdns.org {
                                 encode zstd gzip
 
-                                basicauth {
+                                basic_auth {
         {$RABBIT_BASIC_AUTH_USER} {$RABBIT_BASIC_AUTH_HASH}
     }
 
