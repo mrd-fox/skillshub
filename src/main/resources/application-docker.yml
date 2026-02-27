@@ -1,9 +1,12 @@
 server:
   port: ${SERVER_PORT:10020}
+  # ✅ REQUIRED when behind Caddy/HTTPS (Swagger + absolute URLs + scheme)
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME:skillshub-backend}
+
   servlet:
     multipart:
       max-file-size: 1GB
@@ -28,6 +31,21 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+# ==============================================================
+# ✅ Swagger/OpenAPI - Fix Swagger UI "Try it out" behind HTTPS
+# - Swagger UI must not call http://... when served via https://...
+# - We force Swagger UI to load the spec over HTTPS
+# ==============================================================
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    # ✅ Force HTTPS spec URL (prevents Swagger UI from generating HTTP calls)
+    url: ${SWAGGER_UI_SPEC_URL:https://skillshubdev-api.duckdns.org/v3/api-docs}
+    # Optional, but standard
+    config-url: ${SWAGGER_UI_CONFIG_URL:/v3/api-docs/swagger-config}
 
 rabbitmq:
   host: ${RABBITMQ_HOST:rabbitmq}
