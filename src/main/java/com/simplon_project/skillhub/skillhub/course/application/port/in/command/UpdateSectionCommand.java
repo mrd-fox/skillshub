@@ -22,6 +22,9 @@ public record UpdateSectionCommand(
     public UpdateSectionCommand {
 
         id = Helper.normalizeOptional(id);
+
+        // Keep raw title to detect if user sent blank/HTML-only title
+        String rawTitle = title;
         title = Helper.normalizeOptional(title);
 
         if (position != null && position <= 0) {
@@ -34,8 +37,8 @@ public record UpdateSectionCommand(
                 throw new IllegalArgumentException("section.title is required when creating a section");
             }
         } else {
-            // UPDATE
-            if (title != null && title.isBlank()) {
+            // UPDATE - if title provided but becomes blank after sanitization, reject it
+            if (rawTitle != null && title == null) {
                 throw new IllegalArgumentException("section.title cannot be blank");
             }
         }

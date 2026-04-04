@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.user.application.port.in.command;
 
+import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
 import com.simplon_project.skillhub.skillhub.user.domain.model.Id;
 import com.simplon_project.skillhub.skillhub.user.domain.model.User;
@@ -24,6 +25,32 @@ public record CreateUserCommand(
         @NotNull Set<String> roles
 
 ) {
+
+    public CreateUserCommand {
+        // Sanitiser tous les champs texte
+        if (firstName != null && !firstName.isBlank()) {
+            firstName = Helper.sanitize(firstName);
+        }
+        if (lastName != null && !lastName.isBlank()) {
+            lastName = Helper.sanitize(lastName);
+        }
+        if (address != null && !address.isBlank()) {
+            address = Helper.sanitize(address);
+        }
+        if (city != null && !city.isBlank()) {
+            city = Helper.sanitize(city);
+        }
+        if (country != null && !country.isBlank()) {
+            country = Helper.sanitize(country);
+        }
+        if (phoneNumber != null && !phoneNumber.isBlank()) {
+            phoneNumber = Helper.sanitize(phoneNumber);
+        }
+        if (postalCode != null && !postalCode.isBlank()) {
+            postalCode = Helper.sanitize(postalCode);
+        }
+    }
+
     public User mapToDomain() {
         validate();
 
