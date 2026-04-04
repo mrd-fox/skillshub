@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.application.port.in.command;
 
+import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Chapter;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +16,15 @@ public record CreateChapterCommand(
         String sectionId,
         @NotNull Integer position
 ) {
+
+    public CreateChapterCommand {
+
+        chapterTitle = Helper.sanitize(chapterTitle);
+        if (chapterTitle == null || chapterTitle.isBlank()) {
+            throw new IllegalArgumentException("chapter.title is required and cannot be blank");
+        }
+    }
+
     public Chapter mapToDomain() {
         return Chapter.builder()
                 .id(Id.random())

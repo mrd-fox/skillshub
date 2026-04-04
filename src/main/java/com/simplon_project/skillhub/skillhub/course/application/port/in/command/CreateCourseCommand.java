@@ -1,5 +1,6 @@
 package com.simplon_project.skillhub.skillhub.course.application.port.in.command;
 
+import com.simplon_project.skillhub.skillhub.common.Helper;
 import com.simplon_project.skillhub.skillhub.course.domain.enums.UserRole;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Course;
 import com.simplon_project.skillhub.skillhub.course.domain.model.Id;
@@ -21,7 +22,6 @@ public record CreateCourseCommand(
 
 ) {
 
-
     @Builder
     public CreateCourseCommand {
 // --- auth user ---
@@ -41,9 +41,13 @@ public record CreateCourseCommand(
         }
 
         // --- payload ---
+
+        title = Helper.sanitize(title);
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("title is missing or blank");
         }
+
+        description = Helper.sanitize(description);
 
         if (price == null || price < 0) {
             price = 0L;

@@ -20,6 +20,9 @@ public record UpdateChapterCommand(
     public UpdateChapterCommand {
 
         id = Helper.normalizeOptional(id);
+
+        // Keep raw title to detect if user sent blank/HTML-only title
+        String rawTitle = title;
         title = Helper.normalizeOptional(title);
 
         if (position != null && position <= 0) {
@@ -27,11 +30,13 @@ public record UpdateChapterCommand(
         }
 
         if (id == null) {
+            // CREATE - title is required
             if (title == null || title.isBlank()) {
                 throw new IllegalArgumentException("chapter.title is required when creating a chapter");
             }
         } else {
-            if (title != null && title.isBlank()) {
+            // UPDATE - if title provided but becomes blank after sanitization, reject it
+            if (rawTitle != null && title == null) {
                 throw new IllegalArgumentException("chapter.title cannot be blank");
             }
         }
