@@ -1,8 +1,7 @@
 package com.simplon_project.skillhub.skillhub.user.application.port.in.command;
 
-import com.simplon_project.skillhub.skillhub.user.domain.enums.RolesEnum;
+import com.simplon_project.skillhub.skillhub.common.Helper;
 
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,7 +57,7 @@ public record UpdateUserCommand(
         if (trimmed.isBlank()) {
             return null;
         }
-        return trimmed;
+        return Helper.sanitize(trimmed);
     }
 
     private static Set<String> normalizeRoles(Set<String> roles) {
