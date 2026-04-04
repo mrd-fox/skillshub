@@ -46,12 +46,13 @@ public record UpdateCourseCommand(
             throw new IllegalArgumentException("courseId is missing or blank");
         }
 
-        // ---- normalization ----
+        // ---- normalization + sanitization ----
+        String rawTitle = title;  // Keep original to check if user tried to send blank
         title = Helper.normalizeOptional(title);
         description = Helper.normalizeOptional(description);
 
-        // title cannot be removed
-        if (title != null && title.isBlank()) {
+        // title cannot be removed - if provided but blank, it's an error
+        if (rawTitle != null && title == null) {
             throw new IllegalArgumentException("title cannot be blank");
         }
 
