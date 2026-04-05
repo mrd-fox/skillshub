@@ -1,24 +1,25 @@
 {
     email dardemarina@gmail.com
-
     log {
-            output stdout
-            format console
-            level INFO
-        }
+        output stdout
+        format console
+        level INFO
+    }
 }
 
 # =========================================================
 # Frontend
 # =========================================================
-skillshubdev.duckdns.org {
+skills-hub.uk {
     encode zstd gzip
-
     header {
-               Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-               X-Content-Type-Options "nosniff"
-               Referrer-Policy "no-referrer"
-           }
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+
+    @actuator path /actuator*
+    respond @actuator 403
 
     @api path /api/*
     reverse_proxy @api gateway-service:8080
@@ -29,130 +30,106 @@ skillshubdev.duckdns.org {
 # =========================================================
 # API - public (Swagger backend + API Gateway)
 # =========================================================
-skillshubdev-api.duckdns.org {
+api.skills-hub.uk {
     encode zstd gzip
-
     header {
-               Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-               X-Content-Type-Options "nosniff"
-               Referrer-Policy "no-referrer"
-           }
-
-# ----------------------------
-# Swagger UI (BasicAuth)
-# ----------------------------
-    @swagger_ui path /swagger-ui* /swagger-resources* /webjars*
-    basic_auth @swagger_ui {
-                           {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
-}
-
-# OpenAPI JSON must be reachable by the UI (PAS protégé, sinon Swagger UI ne charge pas)
-@openapi path /v3/api-docs*
-              reverse_proxy @openapi backend-service:10020 {
-                                                           header_up X-Forwarded-Proto https
-                                                           header_up X-Forwarded-Port 443
-                                                           }
-
-              # Swagger UI assets (protégés)
-              reverse_proxy @swagger_ui backend-service:10020 {
-                                                              header_up X-Forwarded-Proto https
-                                                              header_up X-Forwarded-Port 443
-                                                              }
-
-              # ----------------------------
-              # API Gateway (/api/*) + CORS (pour Swagger UI)
-              # ----------------------------
-              @api path /api/*
-              @preflight method OPTIONS
-
-                                handle @api {
-                                            # Préflight
-                                            handle @preflight {
-                                                              header {
-                                                                     Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
-                                                                     Access-Control-Allow-Methods "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-                                                                     Access-Control-Allow-Headers "Authorization,Content-Type,Accept,Origin,X-Requested-With"
-                                                                     Access-Control-Allow-Credentials "true"
-                                                                     Access-Control-Max-Age "86400"
-                                                                     Vary "Origin"
-                                                                     Vary "Access-Control-Request-Method"
-                                                                          Vary "Access-Control-Request-Headers"
-                                                                     }
-                                                              respond "" 204
-                                                              }
-
-                                            # Réponses API
-                                            header {
-                                                   Access-Control-Allow-Origin "https://skillshubdev-api.duckdns.org"
-                                                   Access-Control-Allow-Credentials "true"
-                                                   Vary "Origin"
-                                                   Vary "Access-Control-Request-Method"
-                                                   Vary "Access-Control-Request-Headers"
-                                                   }
-
-                                            reverse_proxy gateway-service:8080
-                                            }
-
-              # Safety fallback
-              reverse_proxy gateway-service:8080
-              }
-
-              # =========================================================
-              # Grafana - public + BasicAuth au proxy
-              # =========================================================
-              skillshubdev-grafana.duckdns.org {
-                                               encode zstd gzip
-
-                                               basic_auth {
-        {$GRAFANA_BASIC_AUTH_USER} {$GRAFANA_BASIC_AUTH_HASH}
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
     }
 
-                                               header {
-                                                      Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-                                                      X-Content-Type-Options "nosniff"
-                                                      X-Frame-Options "SAMEORIGIN"
-                                                      Referrer-Policy "no-referrer"
-                                                      }
+    # ----------------------------
+    # Actuator / Health — blocked from public access
+    # ----------------------------
+    @actuator path /actuator*
+    basic_auth @actuator {
+        {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
+    }
+    reverse_proxy @actuator backend-service:10020
+    # ----------------------------
+    # Swagger UI (BasicAuth)
+    # ----------------------------
+    @swagger_ui path /swagger-ui* /swagger-resources* /webjars*
+    basic_auth @swagger_ui {
+        {$SWAGGER_BASIC_AUTH_USER} {$SWAGGER_BASIC_AUTH_HASH}
+    }
 
-                                               reverse_proxy grafana:3000
-                                               }
+    # OpenAPI JSON must be reachable by the UI (not protected)
+    @openapi path /v3/api-docs*
+    reverse_proxy @openapi backend-service:10020 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Port 443
+    }
+
+    # Swagger UI assets (protected)
+    reverse_proxy @swagger_ui backend-service:10020 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Port 443
+    }
+
+    # ----------------------------
+    # API Gateway (/api/*)
+    # CORS handled exclusively by Gateway
+    # ----------------------------
+
+    # OAuth2 endpoints (Spring Security) - MUST be proxied to gateway
+    @oauth2 path /oauth2/* /login/oauth2/* /logout
+    reverse_proxy @oauth2 gateway-service:8080
+
+    @api path /api/*
+    reverse_proxy @api gateway-service:8080
+
+    # No safety fallback (avoid routing surprises)
+}
+
+# =========================================================
+# Grafana - public + BasicAuth au proxy
+# =========================================================
+grafana.skills-hub.uk {
+    encode zstd gzip
+    basic_auth {
+        {$GRAFANA_BASIC_AUTH_USER} {$GRAFANA_BASIC_AUTH_HASH}
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer"
+    }
+    reverse_proxy grafana:3000
+}
 
 # =========================================================
 # RabbitMQ UI - public + BasicAuth au proxy
 # =========================================================
-skillshubdev-rabbit.duckdns.org {
-                                encode zstd gzip
-
-                                basic_auth {
+rabbit.skills-hub.uk {
+    encode zstd gzip
+    basic_auth {
         {$RABBIT_BASIC_AUTH_USER} {$RABBIT_BASIC_AUTH_HASH}
     }
-
-                                header {
-                                       Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-                                       X-Content-Type-Options "nosniff"
-                                       X-Frame-Options "SAMEORIGIN"
-                                       Referrer-Policy "no-referrer"
-                                       }
-
-                                reverse_proxy rabbitmq:15672
-                                }
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer"
+    }
+    reverse_proxy rabbitmq:15672
+}
 
 # =========================================================
 # Keycloak - public (Admin console + OIDC)
 # =========================================================
-skillshubdev-auth.duckdns.org {
-                              encode zstd gzip
-
-                              header {
-                                     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-                                     X-Content-Type-Options "nosniff"
-                                     Referrer-Policy "no-referrer"
-                                     }
-
-                              reverse_proxy keycloak:8080 {
-                                                          header_up -Forwarded
-                                                          header_up X-Forwarded-Proto https
-                                                          header_up X-Forwarded-Host {host}
-                                                          header_up X-Forwarded-Port 443
-                                                          }
+auth.skills-hub.uk {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+    reverse_proxy keycloak:8080 {
+        header_up -Forwarded
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Port 443
+    }
 }
