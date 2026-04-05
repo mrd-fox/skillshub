@@ -29,6 +29,21 @@ spring:
       hibernate:
         format_sql: true
 
+# ==============================================================
+# ✅ Swagger/OpenAPI - Fix Swagger UI "Try it out" behind HTTPS
+# - Swagger UI must not call http://... when served via https://...
+# - We force Swagger UI to load the spec over HTTPS
+# ==============================================================
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    # ✅ Force HTTPS spec URL (prevents Swagger UI from generating HTTP calls)
+    url: ${SWAGGER_UI_SPEC_URL:https://api.skills-hub.uk/v3/api-docs}
+    # Optional, but standard
+    config-url: ${SWAGGER_UI_CONFIG_URL:/v3/api-docs/swagger-config}
+
 rabbitmq:
   host: ${RABBITMQ_HOST:rabbitmq}
   port: ${RABBITMQ_PORT:5672}
